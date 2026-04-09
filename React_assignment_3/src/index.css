@@ -1,0 +1,93 @@
+:root {
+  --primary-color: #4f46e5;
+  /* Indigo */
+  --secondary-color: #22c55e;
+  /* Green */
+  --danger-color: #ef4444;
+  /* Red */
+  --bg-color: #f9fafb;
+  /* Light background */
+  --text-color: #111827;
+  /* Dark text */
+}
+
+/* Global styles */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+.btnQ1 {
+  background-color: blue;
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+h1 {
+  text-align: center;
+  color: var(--primary-color);
+}
+
+h5 {
+  margin-top: 20px;
+  color: #374151;
+}
+
+/* Section styling */
+section {
+  margin: 30px 0;
+  padding: 20px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Button group */
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* Base button */
+.btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  color: rgb(255, 255, 255);
+  transition: 0.2s ease;
+}
+
+/* Primary button (default) */
+.btn.primary {
+  background-color: var(--primary-color);
+}
+
+.btn.primary:hover {
+  background-color: #4338ca;
+}
+
+/* Success button */
+.btn.success {
+  background-color: var(--secondary-color);
+}
+
+.btn.success:hover {
+  background-color: #16a34a;
+}
+
+/* Error button */
+.btn.error {
+  background-color: var(--danger-color);
+}
+
+.btn.error:hover {
+  background-color: #dc2626;
+}
