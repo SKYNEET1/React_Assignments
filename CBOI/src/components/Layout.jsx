@@ -4,7 +4,7 @@ import Topbar from "./Topbar";
 import VpaModal from "./VpaModal";
 
 export default function Layout({ children }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-50">

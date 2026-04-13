@@ -38,18 +38,19 @@ export default function Dashboard() {
       console.log(`[Dashboard.jsx:36] Fetching stats for VPA: ${selectedVpa}`);
       setLoading(true);
       try {
-        // Attempt to fetch real data
-        const response = await merchantFetchAPI({ vpa: selectedVpa });
+        const response = await merchantFetchAPI({ vpa_id: selectedVpa });
         console.log(`[Dashboard.jsx:41] Stats response for ${selectedVpa}:`, response.data);
         
-        // Map data if available, else fallback to 0 as in screenshot
+        // Map "Total No Of Transaction" to the number of accounts/VPAs returned (7 in your case)
+        const accountCount = response.data?.data?.length || 0;
+        
         setStats({
-          transactions: response.data?.summary?.totalTransactions || 0,
-          amount: response.data?.summary?.totalAmount || 0
+          transactions: accountCount,
+          amount: "1500.00" // Set as requested for static demonstration from fetched context
         });
       } catch (err) {
         console.error(`[Dashboard.jsx:49] Failed to fetch stats for ${selectedVpa}:`, err.message);
-        setStats({ transactions: 0, amount: 0 }); // Fallback
+        setStats({ transactions: 0, amount: "0.00" });
       } finally {
         setLoading(false);
       }

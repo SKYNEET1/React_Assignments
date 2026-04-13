@@ -1,6 +1,6 @@
+// RaiseTicket.jsx
 import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
 import PageLoader from "../components/PageLoader";
 
 const ISSUE_TYPES = ["Hardware", "Software", "Network", "Payment", "Other"];
@@ -14,22 +14,35 @@ const ISSUE_SUB_TYPES = {
 };
 
 export default function RaiseTicket() {
+  // [RaiseTicket.jsx:17]
   const navigate = useNavigate();
   const fileInputRef = useRef();
-  const { selectedVpa } = useSelector((state) => state.auth);
 
-  const [showModal, setShowModal] = useState(false);
-  const [issueType, setIssueType] = useState("");
-  const [issueSubType, setIssueSubType] = useState("");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
-  const [phone, setPhone] = useState("");
+  const [vpaId, setVpaId] = useState("");
+  const [issueType, setIssueType] = useState("");
+  const [issueSubType, setIssueSubType] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [callType, setCallType] = useState("");
   const [attachedFile, setAttachedFile] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [ticketId, setTicketId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const subTypes = issueType ? (ISSUE_SUB_TYPES[issueType] || []) : [];
 
+  const isFormValid =
+    subject.trim() &&
+    description.trim() &&
+    vpaId.trim() &&
+    issueType &&
+    issueSubType &&
+    phoneNumber.trim() &&
+    callType.trim();
+
   const handleIssueTypeChange = (e) => {
+    // [RaiseTicket.jsx:45]
     setIssueType(e.target.value);
     setIssueSubType("");
   };
@@ -45,48 +58,73 @@ export default function RaiseTicket() {
   };
 
   const handleSubmit = (e) => {
+    // [RaiseTicket.jsx:58]
     e.preventDefault();
-    setShowModal(true);
+    if (!isFormValid) return;
+    setIsSubmitting(true);
+    const newId = Math.floor(10000 + Math.random() * 90000);
+    setTimeout(() => {
+      setTicketId(newId);
+      setIsSubmitting(false);
+      setShowModal(true);
+    }, 800);
   };
 
   const handleCancel = () => {
-    setIssueType("");
-    setIssueSubType("");
+    // [RaiseTicket.jsx:70]
     setSubject("");
     setDescription("");
-    setPhone("");
+    setVpaId("");
+    setIssueType("");
+    setIssueSubType("");
+    setPhoneNumber("");
     setCallType("");
     setAttachedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+    handleCancel();
   };
 
   const formatFileSize = (bytes) => {
     if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + "KB";
-    return (bytes / (1024 * 1024)).toFixed(1) + "MB";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
+
+  // Shared input class
+  const inputClass =
+    "w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition bg-white";
+
+  const labelClass = "block text-sm font-medium text-slate-700 mb-1.5";
 
   return (
     <PageLoader>
-      <div className="min-h-[80vh] flex flex-col items-center animate-fade-in">
+      {/* [RaiseTicket.jsx:97] */}
+      <div className="min-h-[80vh] flex flex-col animate-fade-in py-2">
 
-        {/* Top Bar: Back + Contact Info */}
-        <div className="w-full max-w-2xl flex items-center justify-between mb-6">
+        {/* Contact Info Bar */}
+        <div className="w-full flex items-center justify-between mb-5">
           <button
             onClick={() => navigate(-1)}
             className="w-9 h-9 flex items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition shadow-sm"
+            title="Go Back"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-600">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           </button>
 
-          <div className="flex items-center gap-6 bg-white border border-slate-100 shadow-sm rounded-full px-6 py-2.5 text-[13px] font-medium text-slate-600">
+          <div className="flex items-center gap-5 bg-white border border-slate-100 shadow-sm rounded-full px-6 py-2.5 text-[12.5px] font-medium text-slate-600">
             <div className="flex items-center gap-2">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
               Merchant Support No. : 9124573230
             </div>
+            <div className="w-px h-4 bg-slate-200" />
             <div className="flex items-center gap-2">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -95,167 +133,181 @@ export default function RaiseTicket() {
             </div>
           </div>
 
-          {/* Spacer to balance the back button */}
+          {/* Spacer to balance back button */}
           <div className="w-9" />
         </div>
 
         {/* Main Form Card */}
-        <div className="w-full max-w-2xl bg-white rounded-2xl border border-slate-100 shadow-sm p-8">
-          {/* Card Title */}
-          <div className="flex items-center gap-2 mb-6">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-slate-600">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        <div className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm px-8 pt-7 pb-8">
+
+          {/* Card Header */}
+          <div className="flex items-center gap-2 mb-6 pb-5 border-b border-slate-100">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-slate-500">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
             </svg>
             <h2 className="text-base font-bold text-slate-800">Raise a Ticket</h2>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Subject */}
+
+            {/* 1. Subject */}
             <div>
-              <label className="block text-sm text-slate-700 mb-1.5">
+              <label className={labelClass}>
                 Subject <span className="text-red-500">*</span>
               </label>
               <input
+                id="rt_subject"
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Enter Subject"
                 required
-                className="w-full border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+                className={inputClass}
               />
             </div>
 
-            {/* Description */}
+            {/* 2. Description */}
             <div>
-              <label className="block text-sm text-slate-700 mb-1.5">
+              <label className={labelClass}>
                 Description <span className="text-red-500">*</span>
               </label>
               <textarea
+                id="rt_description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value.slice(0, 300))}
                 placeholder="Any additional details..."
                 required
                 rows={4}
-                className="w-full border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition resize-none"
+                className={`${inputClass} resize-none`}
               />
-              <p className="text-xs text-slate-400 mt-1">Describe your issue within 300 characters</p>
+              <p className="text-[11.5px] text-slate-400 mt-1">
+                Describe your issue within 300 characters
+              </p>
             </div>
 
-            {/* VPA Id */}
+            {/* 3. VPA Id */}
             <div>
-              <label className="block text-sm text-slate-700 mb-1.5">
+              <label className={labelClass}>
                 VPA Id <span className="text-red-500">*</span>
               </label>
               <input
+                id="rt_vpa_id"
                 type="text"
-                value={selectedVpa || ""}
-                readOnly
-                className="w-full border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-400 bg-slate-50 cursor-not-allowed focus:outline-none"
+                value={vpaId}
+                onChange={(e) => setVpaId(e.target.value)}
                 placeholder="Enter VPA Id"
+                required
+                className={inputClass}
               />
             </div>
 
-            {/* Issue Type */}
+            {/* 4. Issue Type */}
             <div>
-              <label className="block text-sm text-slate-700 mb-1.5">
+              <label className={labelClass}>
                 Issue Type <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <select
+                  id="rt_issue_type"
                   value={issueType}
                   onChange={handleIssueTypeChange}
                   required
-                  className="w-full border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition appearance-none bg-white"
+                  className={`${inputClass} appearance-none pr-9`}
                 >
                   <option value="">Select Issue Type</option>
                   {ISSUE_TYPES.map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 absolute right-3 top-3.5 pointer-events-none">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
             </div>
 
-            {/* Issue Sub Type */}
+            {/* 5. Issue Sub-type */}
             <div>
-              <label className="block text-sm text-slate-700 mb-1.5">
+              <label className={labelClass}>
                 Issue Sub-type <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <select
+                  id="rt_issue_subtype"
                   value={issueSubType}
                   onChange={(e) => setIssueSubType(e.target.value)}
                   required
                   disabled={!issueType}
-                  className="w-full border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition appearance-none bg-white disabled:bg-slate-50 disabled:text-slate-400"
+                  className={`${inputClass} appearance-none pr-9 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed`}
                 >
                   <option value="">Select Issue Sub-type</option>
                   {subTypes.map((st) => (
                     <option key={st} value={st}>{st}</option>
                   ))}
                 </select>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 absolute right-3 top-3.5 pointer-events-none">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
             </div>
 
-            {/* Phone number */}
+            {/* 6. Phone Number */}
             <div>
-              <label className="block text-sm text-slate-700 mb-1.5">
+              <label className={labelClass}>
                 Phone number <span className="text-red-500">*</span>
               </label>
               <input
+                id="rt_phone"
                 type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
                 placeholder="Enter Phone number"
                 required
-                className="w-full border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+                maxLength={10}
+                className={inputClass}
               />
             </div>
 
-            {/* Call Type */}
+            {/* 7. Call Type */}
             <div>
-              <label className="block text-sm text-slate-700 mb-1.5">
+              <label className={labelClass}>
                 Call Type <span className="text-red-500">*</span>
               </label>
               <input
+                id="rt_call_type"
                 type="text"
                 value={callType}
                 onChange={(e) => setCallType(e.target.value)}
                 placeholder="Enter Call Type"
                 required
-                className="w-full border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+                className={inputClass}
               />
             </div>
 
-            {/* Attachment */}
+            {/* 8. Attachment */}
             <div>
-              <label className="block text-sm text-slate-700 mb-1.5">Attachment</label>
+              <label className={labelClass}>Attachment</label>
               <input
                 type="file"
                 ref={fileInputRef}
+                id="rt_attachment"
                 className="hidden"
-                id="raise_ticket_file"
                 onChange={handleFileChange}
                 accept=".pdf,.jpg,.jpeg,.png"
               />
               <label
-                htmlFor="raise_ticket_file"
-                className="w-full flex items-center gap-3 border border-dashed border-slate-300 rounded-lg px-4 py-3 text-sm text-slate-400 cursor-pointer hover:bg-slate-50 transition"
+                htmlFor="rt_attachment"
+                className="w-full flex items-center gap-3 border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-400 cursor-pointer hover:bg-slate-50 transition"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-slate-400">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-slate-400 shrink-0">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                 </svg>
                 Please Add Attachment
               </label>
 
-              {/* Attached file row */}
               {attachedFile && (
-                <div className="flex items-center gap-3 mt-3">
+                <div className="flex items-center gap-3 mt-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
                   <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded flex items-center justify-center text-[10px] font-bold shrink-0">
                     {attachedFile.name.split(".").pop().toUpperCase()}
                   </div>
@@ -280,19 +332,22 @@ export default function RaiseTicket() {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-50">
+            <div className="flex items-center justify-center gap-4 pt-5 border-t border-slate-100">
               <button
                 type="button"
+                id="rt_cancel_btn"
                 onClick={handleCancel}
-                className="px-7 py-2.5 bg-white border border-slate-300 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition"
+                className="px-10 py-2.5 bg-white border border-blue-500 text-blue-600 text-sm font-semibold rounded-lg hover:bg-blue-50 transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-8 py-2.5 bg-[#a31b2b] text-white text-sm font-semibold rounded-lg hover:bg-[#851320] transition"
+                id="rt_submit_btn"
+                disabled={!isFormValid || isSubmitting}
+                className="px-10 py-2.5 bg-slate-200 text-slate-400 text-sm font-semibold rounded-lg transition disabled:cursor-not-allowed enabled:bg-[#a31b2b] enabled:text-white enabled:hover:bg-[#851320]"
               >
-                Submit
+                {isSubmitting ? "Submitting..." : "Submit"}
               </button>
             </div>
           </form>
@@ -301,17 +356,16 @@ export default function RaiseTicket() {
         {/* Success Modal */}
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-xl w-[380px] overflow-hidden text-center pb-8 pt-10 px-8 relative animate-slide-up">
+            <div className="bg-white rounded-2xl shadow-xl w-[360px] overflow-hidden text-center pb-8 pt-10 px-8 relative animate-slide-up">
               <button
-                onClick={() => setShowModal(false)}
-                className="absolute top-4 right-4 text-slate-300 hover:text-slate-500"
+                onClick={handleModalClose}
+                className="absolute top-4 right-4 text-slate-300 hover:text-slate-500 transition"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
 
-              {/* Checkmark icon */}
               <div className="w-16 h-16 mx-auto mb-5 bg-green-50 rounded-full flex items-center justify-center">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-8 h-8 text-green-500">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -320,12 +374,12 @@ export default function RaiseTicket() {
 
               <h3 className="text-xl font-bold text-slate-800 mb-2">Ticket Created!</h3>
               <p className="text-sm text-slate-500 mb-8">
-                Your ticket has been submitted. Track it with ID:{" "}
-                <span className="font-semibold text-blue-600">#{Math.floor(10000 + Math.random() * 90000)}</span>
+                Your ticket has been submitted. Track it with ID{" "}
+                <span className="font-semibold text-blue-600">#{ticketId}</span>
               </p>
 
               <button
-                onClick={() => setShowModal(false)}
+                onClick={handleModalClose}
                 className="w-full bg-[#185bc5] text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition"
               >
                 Close

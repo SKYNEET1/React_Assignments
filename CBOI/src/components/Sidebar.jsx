@@ -75,57 +75,49 @@ export default function Sidebar() {
             <button
               onClick={() => setHelpExpanded(!helpExpanded)}
               className={`w-full flex items-center justify-between px-6 py-4 text-sm font-medium transition-all duration-200 ${
-                helpExpanded ? "text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                helpExpanded ? "text-slate-900 bg-slate-50/30" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
               <div className="flex items-center gap-4">
-                {/* Question mark circle icon */}
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-slate-500">
-                  <circle cx="12" cy="12" r="10" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01" />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-slate-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Help &amp; Support
+                Help & Support
               </div>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${helpExpanded ? "rotate-180" : ""}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${helpExpanded ? "rotate-180" : ""}`}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
 
             {helpExpanded && (
-              <div className="py-1">
-                {/* Raise Ticket */}
+              <div className="bg-slate-50/50 py-1">
                 <NavLink
                   to="/raise-ticket"
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-8 py-3 text-[13px] font-medium transition-all ${
+                    `flex items-center gap-3 px-10 py-3 text-[13px] font-medium transition-all ${
                       isActive
-                        ? "text-blue-600 border-r-4 border-blue-600 bg-blue-50/50"
-                        : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                        ? "text-blue-600 border-r-4 border-blue-600 bg-blue-50/30"
+                        : "text-slate-500 hover:text-slate-800"
                     }`
                   }
                 >
-                  {/* Arrow/raise icon */}
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[18px] h-[18px] shrink-0">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" />
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 shrink-0">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                   </svg>
                   Raise Ticket
                 </NavLink>
-
-                {/* View Tickets */}
                 <NavLink
                   to="/view-tickets"
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-8 py-3 text-[13px] font-medium transition-all ${
+                    `flex items-center gap-3 px-10 py-3 text-[13px] font-medium transition-all ${
                       isActive
-                        ? "text-blue-600 border-r-4 border-blue-600 bg-blue-50/50"
-                        : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                        ? "text-blue-600 border-r-4 border-blue-600 bg-blue-50/30"
+                        : "text-slate-500 hover:text-slate-800"
                     }`
                   }
                 >
-                  {/* Ticket/document icon */}
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[18px] h-[18px] shrink-0">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 shrink-0">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
                   View Tickets
                 </NavLink>

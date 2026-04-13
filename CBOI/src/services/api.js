@@ -1,9 +1,9 @@
 import axios from "axios";
 import { encryptRequest, decryptResponse } from "./cryptoService";
 
-const SERVICES_UAT = "https://services-cboi-uat.isupay.in/CBOI";
-const ENCR_UAT = "https://services-cboi-uat.isupay.in/CBOI";
-const USER_UAT = "https://services-cboi-uat.isupay.in/CBOI";
+const SERVICES_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
+const ENCR_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
+const USER_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
 
 const PASS_KEY = "c0CKRG7yNFY3OIxY92izqj0YeMk6JPqdOlGgqsv3mhicXmAv";
 
@@ -56,15 +56,12 @@ const attachToken = (config) => {
 
     const newHeaders = {
       ...config.headers,
-      "Authorization": `${token}`,
+      "Authorization": token,
       "pass_key": PASS_KEY
     };
 
-    newHeaders["tokenProperties"] = b64Props;
-    newHeaders["tokenproperties"] = b64Props;
-
     config.headers = newHeaders;
-    console.log(`[api.js:68] Headers attached with tokenProperties for user: ${properties.user_name}`);
+    console.log(`[api.js:68] Headers attached with JWT for user: ${properties.user_name}`);
   } else {
     console.log("[api.js:70] No token found in localStorage");
   }
@@ -92,8 +89,9 @@ const executeEncryptedPost = async (url, data) => {
     const response = await apiEncr.post(url, payload);
     
     if (response.data && response.data.ResponseData) {
+      console.log(`[api.js:95] Raw Encrypted Response from ${url}:`, response.data.ResponseData);
       response.data = await decryptResponse(response.data.ResponseData);
-      console.log(`[api.js:96] Decrypted response from ${url}:`, response.data);
+      console.log(`[api.js:97] Decrypted Response from ${url}:`, response.data);
     }
     return response;
   } catch (error) {
@@ -117,8 +115,9 @@ const executeEncryptedGet = async (url) => {
   try {
     const response = await apiEncr.get(url);
     if (response.data && response.data.ResponseData) {
+      console.log(`[api.js:120] Raw Encrypted Response from ${url}:`, response.data.ResponseData);
       response.data = await decryptResponse(response.data.ResponseData);
-      console.log(`[api.js:120] Decrypted response from ${url}:`, response.data);
+      console.log(`[api.js:122] Decrypted Response from ${url}:`, response.data);
     }
     return response;
   } catch (error) {
@@ -139,27 +138,27 @@ const executeEncryptedGet = async (url) => {
 
 export const languageUpdateAPI = (data) => {
   console.log("[api.js:138] Calling languageUpdateAPI");
-  return apiServices.post("/isu_soundbox/lang/status_update", { key: "lang_update", message: data });
+  return executeEncryptedPost("/isu_soundbox/lang/status_update", { key: "lang_update", message: data });
 };
 
 export const deviceLivenessAPI = (data) => {
   console.log("[api.js:141] Calling deviceLivenessAPI");
-  return apiServices.post("/isu_soundbox/lang/status_update", { key: "device_liveness", message: data });
+  return executeEncryptedPost("/isu_soundbox/lang/status_update", { key: "device_liveness", message: data });
 };
 
 export const campaignUpdateAPI = (data) => {
   console.log("[api.js:144] Calling campaignUpdateAPI");
-  return apiServices.post("/isu_soundbox/lang/status_update", { key: "campaign_update", message: data });
+  return executeEncryptedPost("/isu_soundbox/lang/status_update", { key: "campaign_update", message: data });
 };
 
 export const merchantOnboardAPI = (data) => {
   console.log("[api.js:147] Calling merchantOnboardAPI");
-  return apiServices.post("/merchant/bulk-onboard", data);
+  return executeEncryptedPost("/merchant/bulk-onboard", data);
 };
 
 export const merchantFetchAPI = (data) => {
   console.log("[api.js:150] Calling merchantFetchAPI with:", data);
-  return apiServices.post("/fetch/fetchById", data);
+  return executeEncryptedPost("/fetch/fetchById", data);
 };
 
 export const generateQRAPI = (data) => {

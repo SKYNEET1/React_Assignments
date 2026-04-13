@@ -1,268 +1,311 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import { merchantFetchAPI, generateQRAPI } from "../services/api";
 import PageLoader from "../components/PageLoader";
 import { QRCodeSVG } from "qrcode.react";
+import CboiLogo from "../components/CboiLogo";
 
 export default function QrDetails() {
   const { selectedVpa } = useSelector((state) => state.auth);
 
+  const [qrType, setQrType] = useState("static"); // "static" or "dynamic"
+  const [amount, setAmount] = useState("");
+  const [showQr, setShowQr] = useState(false);
   const [qrString, setQrString] = useState(null);
-  const [qrBase64, setQrBase64] = useState(null);
   const [merchantName, setMerchantName] = useState(null);
   const [merchantId, setMerchantId] = useState(null);
+  
   const [fetchingData, setFetchingData] = useState(false);
-  const [generatingBase64, setGeneratingBase64] = useState(false);
   const [error, setError] = useState(null);
-  const [copied, setCopied] = useState(false);
+  
+  // Dynamic QR Specifics
+  const [activeAmount, setActiveAmount] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
+  const timerRef = useRef(null);
 
   useEffect(() => {
     if (!selectedVpa) return;
 
-    async function fetchQrData() {
-      console.log(`[QrDetails.jsx:22] Fetching QR details for VPA: ${selectedVpa}`);
+    async function fetchMerchantData() {
       setFetchingData(true);
       setError(null);
       try {
         const response = await merchantFetchAPI({ vpa_id: selectedVpa });
-        console.log("[QrDetails.jsx:28] Merchant fetch response:", response.data);
-
         const data = response.data;
         const merchant = Array.isArray(data?.data) ? data.data[0] : (data?.data || data?.merchant || data);
 
-        const qs =
-          merchant?.qr_string ||
-          merchant?.qrString ||
-          merchant?.qr_payload ||
-          merchant?.qr_code ||
-          null;
+        const name = merchant?.merchant_name || merchant?.name || merchant?.merchName || "Merchant";
+        const id = merchant?.merchant_id || merchant?.id || "N/A";
+        const staticQs = merchant?.qr_string || merchant?.qrString || merchant?.qr_payload || "";
 
-        const name =
-          merchant?.merchant_name ||
-          merchant?.name ||
-          merchant?.merchName ||
-          null;
-
-        const id = merchant?.merchant_id || merchant?.id || null;
-
-        console.log(`[QrDetails.jsx:44] QR String: ${qs?.substring(0, 40)}... | Name: ${name}`);
-        setQrString(qs);
         setMerchantName(name);
         setMerchantId(id);
+        setQrString(staticQs);
+        
+        if (qrType === "static") {
+          setShowQr(true);
+        }
       } catch (err) {
-        console.error("[QrDetails.jsx:50] Failed to fetch QR details:", err.message);
-        setError("Could not load QR details for the selected VPA. The API may not have returned QR data.");
+        console.error("[QrDetails.jsx] Fetch error:", err);
+        setError("Failed to load merchant details.");
       } finally {
         setFetchingData(false);
       }
     }
 
-    fetchQrData();
-  }, [selectedVpa]);
+    fetchMerchantData();
+  }, [selectedVpa, qrType]);
 
-  const handleGenerateBase64 = async () => {
-    if (!qrString) return;
-    console.log("[QrDetails.jsx:62] Generating Base64 QR image...");
-    setGeneratingBase64(true);
-    try {
-      const res = await generateQRAPI({ qr_string: qrString });
-      console.log("[QrDetails.jsx:66] Base64 QR Response:", res.data);
-      const b64 = res.data?.base64 || res.data?.qr_image || res.data?.data?.base64 || res.data;
-      setQrBase64(typeof b64 === "string" ? b64 : JSON.stringify(b64));
-    } catch (err) {
-      console.error("[QrDetails.jsx:70] Base64 generation failed:", err.message);
-      setError("Failed to generate Base64 QR image.");
-    } finally {
-      setGeneratingBase64(false);
+  // Timer logic for dynamic QR
+  useEffect(() => {
+    if (showQr && qrType === "dynamic" && timeLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0) {
+      setShowQr(false);
+    }
+
+    return () => clearInterval(timerRef.current);
+  }, [showQr, qrType, timeLeft]);
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const handleGenerateQR = (e) => {
+    if (e) e.preventDefault();
+    if (qrType === "dynamic" && !amount) return;
+
+    if (qrType === "dynamic") {
+      // Construct Dynamic UPI String
+      // upi://pay?pa=VPA&pn=NAME&am=AMOUNT&cu=INR
+      const encodedName = encodeURIComponent(merchantName);
+      const dynamicString = `upi://pay?pa=${selectedVpa}&pn=${encodedName}&am=${amount}&cu=INR`;
+      setQrString(dynamicString);
+      setActiveAmount(amount);
+      setTimeLeft(300); // Reset timer to 5 mins
+      setShowQr(true);
+    } else {
+      setShowQr(true);
     }
   };
 
-  const handleCopy = () => {
-    if (!qrString) return;
-    navigator.clipboard.writeText(qrString);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const handleDownload = () => {
-    if (!qrBase64) return;
-    const src = qrBase64.startsWith("data:") ? qrBase64 : `data:image/png;base64,${qrBase64}`;
-    const a = document.createElement("a");
-    a.href = src;
-    a.download = `qr-${selectedVpa}.png`;
-    a.click();
+    const svg = document.getElementById("qr-svg");
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      const pngFile = canvas.toDataURL("image/png");
+      const downloadLink = document.createElement("a");
+      downloadLink.download = `CBOI_QR_${selectedVpa}.png`;
+      downloadLink.href = `${pngFile}`;
+      downloadLink.click();
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
   };
 
   return (
     <PageLoader>
-      <div className="animate-fade-in">
+      <div className="animate-fade-in pb-12">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-xl font-bold text-slate-800">QR Details</h1>
-          {selectedVpa && (
-            <p className="text-sm text-slate-500 mt-1">
-              VPA ID:{" "}
-              <span className="text-blue-600 font-semibold">{selectedVpa}</span>
-            </p>
-          )}
         </div>
 
-        {/* Loading State */}
-        {fetchingData && (
-          <div className="flex flex-col items-center justify-center min-h-[300px]">
-            <div className="relative w-12 h-12 mb-4">
-              <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
-              <div className="absolute inset-0 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            </div>
-            <p className="text-sm text-slate-400">Fetching QR data...</p>
-          </div>
-        )}
-
-        {/* Error State */}
-        {!fetchingData && error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-lg mx-auto">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-8 h-8 text-red-400 mx-auto mb-3">
-              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <p className="text-sm text-red-600 font-medium">{error}</p>
-          </div>
-        )}
-
-        {/* No VPA selected */}
-        {!selectedVpa && !fetchingData && (
-          <div className="text-center py-20 text-slate-400">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-14 h-14 mx-auto mb-4 text-slate-300">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-            </svg>
-            <p className="text-sm font-medium">Please select a VPA first</p>
-          </div>
-        )}
-
-        {/* Main Content */}
-        {!fetchingData && !error && selectedVpa && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* QR Code Card */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 flex flex-col items-center">
-              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-6">QR Code</h2>
-
-              {qrString ? (
-                <>
-                  {/* SVG QR (always available from qrstring) */}
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 mb-6">
-                    <QRCodeSVG value={qrString} size={200} level="H" includeMargin />
-                  </div>
-
-                  {/* Base64 image after generation */}
-                  {qrBase64 && (
-                    <div className="mb-6">
-                      <p className="text-[11px] text-slate-400 uppercase font-bold mb-2 text-center">Bank-side Base64 Image</p>
-                      <img
-                        src={qrBase64.startsWith("data:") ? qrBase64 : `data:image/png;base64,${qrBase64}`}
-                        alt="Base64 QR"
-                        className="w-48 h-48 rounded-xl border border-slate-200 shadow-sm mx-auto"
-                      />
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-3 justify-center w-full">
-                    {!qrBase64 && (
-                      <button
-                        onClick={handleGenerateBase64}
-                        disabled={generatingBase64}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-[#185bc5] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
-                      >
-                        {generatingBase64 ? (
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
-                          </svg>
-                        )}
-                        {generatingBase64 ? "Generating..." : "Generate Base64 QR"}
-                      </button>
-                    )}
-
-                    {qrBase64 && (
-                      <button
-                        onClick={handleDownload}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Download QR
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-[200px] text-center">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12 text-slate-200 mb-3">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                  </svg>
-                  <p className="text-sm text-slate-400">No QR string returned by API</p>
-                </div>
-              )}
-            </div>
-
-            {/* Info Card */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8">
-              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-6">Details</h2>
-              <div className="space-y-5">
-                <InfoRow label="VPA ID" value={selectedVpa} highlight />
-                {merchantName && <InfoRow label="Merchant Name" value={merchantName} />}
-                {merchantId && <InfoRow label="Merchant ID" value={merchantId} />}
-
-                {qrString && (
-                  <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Raw QR Payload</p>
-                    <div className="relative bg-slate-50 border border-slate-100 rounded-xl p-4">
-                      <p className="text-[11px] font-mono text-slate-600 break-all max-h-28 overflow-y-auto pr-8">
-                        {qrString}
-                      </p>
-                      <button
-                        onClick={handleCopy}
-                        className="absolute top-3 right-3 text-slate-300 hover:text-blue-600 transition"
-                        title="Copy QR string"
-                      >
-                        {copied ? (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 text-green-500">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        ) : (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* API response log */}
-                <div className="mt-4 pt-4 border-t border-slate-50">
-                  <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                    {`[QrDetails.jsx:205] Loaded for VPA: ${selectedVpa}`}
-                  </p>
-                </div>
+        {/* Configuration Card */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
+          <form onSubmit={handleGenerateQR} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-3">Select The Type of QR</label>
+              <div className="flex items-center gap-6">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="qrType"
+                    value="static"
+                    checked={qrType === "static"}
+                    onChange={(e) => {
+                        setQrType(e.target.value);
+                        setShowQr(false);
+                    }}
+                    className="w-4 h-4 text-[#185bc5] border-slate-300 focus:ring-[#185bc5]"
+                  />
+                  <span className={`text-sm font-medium ${qrType === "static" ? "text-slate-800" : "text-slate-500 group-hover:text-slate-700"}`}>Static</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="qrType"
+                    value="dynamic"
+                    checked={qrType === "dynamic"}
+                    onChange={(e) => {
+                        setQrType(e.target.value);
+                        setShowQr(false);
+                    }}
+                    className="w-4 h-4 text-[#185bc5] border-slate-300 focus:ring-[#185bc5]"
+                  />
+                  <span className={`text-sm font-medium ${qrType === "dynamic" ? "text-slate-800" : "text-slate-500 group-hover:text-slate-700"}`}>Dynamic</span>
+                </label>
               </div>
             </div>
+
+            {qrType === "dynamic" && (
+              <div className="animate-slide-down">
+                <p className="text-sm text-slate-500 mb-4">Enter an amount to instantly generate your dynamic QR code</p>
+                <div className="flex flex-col gap-1.5 max-w-sm">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount to be collected</label>
+                  <div className="flex gap-3">
+                    <input
+                      type="number"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="Enter amount to be collected"
+                      className="flex-1 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#185bc5]/20 focus:border-[#185bc5] transition-all bg-white"
+                    />
+                    <button
+                      type="submit"
+                      className="bg-[#185bc5] hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-lg transition-colors text-sm shrink-0 shadow-sm"
+                    >
+                      Generate QR
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {qrType === "static" && (
+                <div className="flex justify-end">
+                    <button
+                        type="submit"
+                        className="bg-[#185bc5] hover:bg-blue-700 text-white font-semibold px-8 py-2.5 rounded-lg transition-colors text-sm shadow-sm"
+                    >
+                        Submit
+                    </button>
+                </div>
+            )}
+          </form>
+        </div>
+
+        {/* QR Display Area */}
+        {showQr && !fetchingData && (
+          <div className="flex flex-col items-center animate-fade-in">
+            {qrType === "dynamic" && activeAmount && (
+              <div className="text-center mb-6">
+                <p className="text-sm font-medium text-slate-500 mb-1">Amount to be Collected</p>
+                <p className="text-2xl font-bold text-[#a31b2b]">₹ {activeAmount}</p>
+              </div>
+            )}
+
+            {/* QR Card */}
+            <div className="relative bg-white rounded-[2rem] border-4 border-[#185bc5] shadow-2xl p-6 w-full max-w-[380px] overflow-hidden">
+               {/* Branding Top */}
+               <div className="flex flex-col items-center mb-4 pt-2">
+                  <CboiLogo className="h-10 mb-2" />
+                  <div className="h-px w-full bg-slate-100 my-3" />
+                  <h3 className="text-lg font-extrabold text-[#1e293b] uppercase tracking-tight text-center px-4">
+                    {merchantName}
+                  </h3>
+                  <p className="text-[#185bc5] font-bold text-sm mt-1">Scan & Pay</p>
+               </div>
+
+               {/* QR Code */}
+               <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-inner flex items-center justify-center mb-4">
+                  <QRCodeSVG 
+                    id="qr-svg"
+                    value={qrString} 
+                    size={220} 
+                    level="H" 
+                    includeMargin={false}
+                  />
+               </div>
+
+               {/* UPI ID */}
+               <div className="text-center mb-6">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">UPI Id: {selectedVpa}</p>
+               </div>
+
+               {/* Payment Apps Banner */}
+               <div className="mt-auto px-2">
+                 <div className="grid grid-cols-4 gap-4 items-center mb-2">
+                    <PaymentIcon name="BHIM" color="#185bc5" />
+                    <PaymentIcon name="UPI" color="#185bc5" />
+                    <PaymentIcon name="PhonePe" color="#5f259f" />
+                    <PaymentIcon name="GPay" isGoogle />
+                 </div>
+                 <div className="grid grid-cols-4 gap-4 items-center">
+                    <PaymentIcon name="Paytm" color="#00baf2" />
+                    <PaymentIcon name="CRED" color="#000" />
+                    <PaymentIcon name="Navi" color="#00d5a3" />
+                    <PaymentIcon name="CentOzz" color="#a31b2b" />
+                 </div>
+               </div>
+            </div>
+
+            {/* Dynamic Validity */}
+            {qrType === "dynamic" && (
+                <p className="mt-8 text-sm font-bold text-red-500 animate-pulse">
+                    Valid till {formatTime(timeLeft)}
+                </p>
+            )}
+
+            {/* Static Actions */}
+            {qrType === "static" && (
+                <button
+                    onClick={handleDownload}
+                    className="mt-10 bg-[#185bc5] hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-xl transition shadow-lg flex items-center gap-2"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download QR
+                </button>
+            )}
           </div>
+        )}
+
+        {/* Placeholder / No Data */}
+        {!showQr && !fetchingData && !error && (
+            <div className="bg-white rounded-xl border-2 border-dashed border-slate-200 py-20 flex flex-col items-center justify-center text-slate-400">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-16 h-16 mb-4 opacity-20">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+                <p className="font-medium">Select type and click Generate/Submit to view QR</p>
+            </div>
         )}
       </div>
     </PageLoader>
   );
 }
 
-function InfoRow({ label, value, highlight }) {
+function PaymentIcon({ name, color, isGoogle }) {
+    if (isGoogle) {
+        return (
+            <div className="flex flex-col items-center">
+                <div className="flex gap-0.5 text-[8px] font-bold">
+                    <span className="text-blue-500">G</span>
+                    <span className="text-red-500">P</span>
+                    <span className="text-yellow-500">a</span>
+                    <span className="text-green-500">y</span>
+                </div>
+            </div>
+        );
+    }
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">{label}</span>
-      <span className={`text-sm font-semibold break-all ${highlight ? "text-blue-600" : "text-slate-700"}`}>
-        {value}
-      </span>
+    <div className="flex flex-col items-center">
+      <div 
+        className="text-[9px] font-black italic tracking-tighter"
+        style={{ color: color || '#64748b' }}
+      >
+        {name}
+      </div>
     </div>
   );
 }
