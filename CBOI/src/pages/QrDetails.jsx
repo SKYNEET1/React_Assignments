@@ -42,11 +42,6 @@ export default function QrDetails() {
         setMerchantName(name);
         setMerchantId(id);
         setQrString(staticQs);
-        
-        if (qrType === "static" && staticQs) {
-          // Instead of just showing the local SVG, fetch base64 from API
-          await fetchBase64Qr(staticQs);
-        }
       } catch (err) {
         console.error("[QrDetails.jsx] Fetch error:", err);
         setError("Failed to load merchant details.");
@@ -56,12 +51,12 @@ export default function QrDetails() {
     }
 
     fetchMerchantData();
-  }, [selectedVpa, qrType]);
+  }, [selectedVpa]);
 
   const fetchBase64Qr = async (payload) => {
     try {
-      const res = await generateQRAPI({ qr_string: payload });
-      let b64 = res.data?.base64 || res.data?.qr_image || res.data?.data?.base64 || res.data;
+      const res = await generateQRAPI({ qrString: payload });
+      let b64 = res.data?.base64Image || res.data?.base64 || res.data?.qr_image || res.data?.data?.base64 || res.data;
       if (typeof b64 === "object") b64 = JSON.stringify(b64);
       setApiQrBase64(b64);
       setShowQr(true);
@@ -228,88 +223,47 @@ export default function QrDetails() {
 
         {/* QR Display Area */}
         {showQr && !fetchingData && (
-          <div className="flex flex-col items-center animate-fade-in">
+          <div className="flex flex-col items-center animate-fade-in py-6 gap-6">
             {qrType === "dynamic" && activeAmount && (
-              <div className="text-center mb-6">
+              <div className="text-center">
                 <p className="text-sm font-medium text-slate-500 mb-1">Amount to be Collected</p>
                 <p className="text-2xl font-bold text-[#a31b2b]">₹ {activeAmount}</p>
               </div>
             )}
 
-            {/* QR Card */}
-            <div className="relative bg-white rounded-[2rem] border-4 border-[#185bc5] shadow-2xl p-6 w-full max-w-[380px] overflow-hidden">
-               {/* Branding Top */}
-               <div className="flex flex-col items-center mb-4 pt-2">
-                  <CboiLogo className="h-10 mb-2" />
-                  <div className="h-px w-full bg-slate-100 my-3" />
-                  <h3 className="text-lg font-extrabold text-[#1e293b] uppercase tracking-tight text-center px-4">
-                    {merchantName}
-                  </h3>
-                  <p className="text-[#185bc5] font-bold text-sm mt-1">Scan & Pay</p>
-               </div>
-
-               {/* QR Code */}
-               <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-inner flex items-center justify-center mb-4 min-h-[220px]">
-                  {apiQrBase64 ? (
-                      typeof apiQrBase64 === "string" && apiQrBase64.startsWith("data:image") ? (
-                        <img id="qr-img" src={apiQrBase64} alt="QR Code" className="w-[200px] h-[200px]" />
-                      ) : typeof apiQrBase64 === "string" && apiQrBase64.length > 100 ? (
-                        <img id="qr-img" src={`data:image/png;base64,${apiQrBase64}`} alt="QR Code" className="w-[200px] h-[200px]" />
-                      ) : (
-                        <pre className="text-[10px] text-slate-700 max-w-full overflow-hidden break-all">{apiQrBase64}</pre>
-                      )
-                  ) : (
-                      <QRCodeSVG 
-                        id="qr-svg"
-                        value={qrString} 
-                        size={220} 
-                        level="H" 
-                        includeMargin={false}
-                      />
-                  )}
-               </div>
-
-               {/* UPI ID */}
-               <div className="text-center mb-6">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">UPI Id: {selectedVpa}</p>
-               </div>
-
-               {/* Payment Apps Banner */}
-               <div className="mt-auto px-2">
-                 <div className="grid grid-cols-4 gap-4 items-center mb-2">
-                    <PaymentIcon name="BHIM" color="#185bc5" />
-                    <PaymentIcon name="UPI" color="#185bc5" />
-                    <PaymentIcon name="PhonePe" color="#5f259f" />
-                    <PaymentIcon name="GPay" isGoogle />
-                 </div>
-                 <div className="grid grid-cols-4 gap-4 items-center">
-                    <PaymentIcon name="Paytm" color="#00baf2" />
-                    <PaymentIcon name="CRED" color="#000" />
-                    <PaymentIcon name="Navi" color="#00d5a3" />
-                    <PaymentIcon name="CentOzz" color="#a31b2b" />
-                 </div>
-               </div>
-            </div>
+            {/* API Image — just display it directly */}
+            {apiQrBase64 ? (
+              <img
+                id="qr-img"
+                src={
+                  typeof apiQrBase64 === "string" && apiQrBase64.startsWith("data:image")
+                    ? apiQrBase64
+                    : `data:image/png;base64,${apiQrBase64}`
+                }
+                alt="QR Code"
+                className="w-full max-w-[300px] h-auto rounded-xl shadow-lg"
+              />
+            ) : (
+              /* Fallback: local SVG if API hasn't returned image yet */
+              <div className="p-6 bg-white rounded-xl shadow-lg border border-slate-200">
+                <QRCodeSVG id="qr-svg" value={qrString || "upi://pay"} size={300} level="H" includeMargin />
+              </div>
+            )}
 
             {/* Dynamic Validity */}
             {qrType === "dynamic" && (
-                <p className="mt-8 text-sm font-bold text-red-500 animate-pulse">
-                    Valid till {formatTime(timeLeft)}
-                </p>
+              <p className="text-sm font-bold text-red-500 animate-pulse bg-red-50 px-4 py-1.5 rounded-full border border-red-100">
+                Valid till {formatTime(timeLeft)}
+              </p>
             )}
 
-            {/* Static Actions */}
-            {qrType === "static" && (
-                <button
-                    onClick={handleDownload}
-                    className="mt-10 bg-[#185bc5] hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-xl transition shadow-lg flex items-center gap-2"
-                >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Download QR
-                </button>
-            )}
+            {/* Download button */}
+            <button
+              onClick={handleDownload}
+              className="bg-[#185bc5] hover:bg-blue-700 text-white font-semibold py-2.5 px-10 rounded-md transition shadow-md text-sm"
+            >
+              Download QR
+            </button>
           </div>
         )}
 

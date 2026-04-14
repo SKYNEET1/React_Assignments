@@ -4,6 +4,7 @@ import { encryptRequest, decryptResponse } from "./cryptoService";
 const SERVICES_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
 const ENCR_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
 const USER_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
+const PLAIN_UAT = "https://api-preprod.txninfra.com/CBOI";
 const REPORTS_UAT = "https://services-cboi-uat.isupay.in/CBOI/reports";
 
 const PASS_KEY = "c0CKRG7yNFY3OIxY92izqj0YeMk6JPqdOlGgqsv3mhicXmAv";
@@ -75,11 +76,13 @@ const apiServices = axios.create({ baseURL: SERVICES_UAT, headers: baseHeaders }
 const apiEncr = axios.create({ baseURL: ENCR_UAT, headers: baseHeaders });
 const apiUser = axios.create({ baseURL: USER_UAT, headers: baseHeaders });
 const apiReports = axios.create({ baseURL: REPORTS_UAT, headers: baseHeaders });
+const apiPlain = axios.create({ baseURL: PLAIN_UAT, headers: baseHeaders });
 
 apiServices.interceptors.request.use(attachToken);
 apiEncr.interceptors.request.use(attachToken);
 apiUser.interceptors.request.use(attachToken);
 apiReports.interceptors.request.use(attachToken);
+apiPlain.interceptors.request.use(attachToken);
 
 // Encrypted Execution wrappers
 const executeEncryptedPost = async (url, data) => {
@@ -143,45 +146,45 @@ const executeEncryptedGet = async (url) => {
 
 
 export const languageUpdateAPI = (data) => {
-  console.log("[api.js:138] Calling languageUpdateAPI");
+  console.log("[api.js] Calling languageUpdateAPI");
   return executeEncryptedPost("/isu_soundbox/lang/status_update", { key: "lang_update", message: data });
 };
 
 export const deviceLivenessAPI = (data) => {
-  console.log("[api.js:141] Calling deviceLivenessAPI");
+  console.log("[api.js] Calling deviceLivenessAPI");
   return executeEncryptedPost("/isu_soundbox/lang/status_update", { key: "device_liveness", message: data });
 };
 
 export const campaignUpdateAPI = (data) => {
-  console.log("[api.js:144] Calling campaignUpdateAPI");
+  console.log("[api.js] Calling campaignUpdateAPI");
   return executeEncryptedPost("/isu_soundbox/lang/status_update", { key: "campaign_update", message: data });
 };
 
 export const merchantOnboardAPI = (data) => {
-  console.log("[api.js:147] Calling merchantOnboardAPI");
+  console.log("[api.js] Calling merchantOnboardAPI");
   return executeEncryptedPost("/merchant/bulk-onboard", data);
 };
 
 export const merchantFetchAPI = (data) => {
-  console.log("[api.js:150] Calling merchantFetchAPI with:", data);
+  console.log("[api.js] Calling merchantFetchAPI with:", data);
   return executeEncryptedPost("/fetch/fetchById", data);
 };
 
 export const generateQRAPI = (data) => {
-  console.log("[api.js:153] Calling generateQRAPI");
+  console.log("[api.js] Calling generateQRAPI");
   return executeEncryptedPost("/merchant/qr_convert_to_base64", data);
 };
 
 export const fetchLanguageAPI = () => {
-  console.log("[api.js:156] Calling fetchLanguageAPI");
+  console.log("[api.js] Calling fetchLanguageAPI");
   return executeEncryptedGet("/isu_soundbox/lang/fetch_language");
 };
 
 export const checkLanguageStatusAPI = (tid) => {
-  console.log(`[api.js:159] Calling checkLanguageStatusAPI for TID: ${tid}`);
+  console.log(`[api.js] Calling checkLanguageStatusAPI for TID: ${tid}`);
   return executeEncryptedGet(`/isu_soundbox/lang/status_check/${tid}`);
 };
-export const currentLanguageAPI = (tid) => apiUser.get(`/isu_soundbox/user_api/current_language/${tid}`);
+export const currentLanguageAPI = (tid) => executeEncryptedGet(`/isu_soundbox/user_api/current_language/${tid}`);
 export const submitLanguageUpdateAPI = (data) => executeEncryptedPost("/isu_soundbox/lang/update_language", data);
 
 export const transactionReportAPI = (data) => {

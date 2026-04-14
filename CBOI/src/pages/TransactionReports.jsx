@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { transactionReportAPI, reportStatusAPI } from "../services/api";
 import PageLoader from "../components/PageLoader";
-import LoadingSpinner from "../components/LoadingSpinner";
 import Alert from "../components/Alert";
 
 export default function TransactionReports() {
@@ -109,36 +108,43 @@ export default function TransactionReports() {
     try {
       const response = await transactionReportAPI(payload);
       const resData = response.data;
-      console.log(`[TransactionReports.jsx] Raw API Response:`, resData);
-
+      const resHeaders = response.headers;
+      console.log(`[TransactionReports.jsx] Raw API Response Body:`, resData);
+      console.log(`[TransactionReports.jsx] Raw API Response Headers:`, resHeaders);
+      
       // PRIORITY 1: Check if data is returned directly (array of transactions)
       const dataArray = resData?.data || resData?.transactions || resData?.data_array || [];
-
+      
       if (Array.isArray(dataArray) && dataArray.length > 0) {
         console.log(`[TransactionReports.jsx] Data received directly. Count: ${dataArray.length}`);
         setTransactions(dataArray);
-        setQueryId(null);
-        setReportStatus(null);
+        // If we also got a query ID in headers, we can set it for possible excel download
+        const hQid = resHeaders?.['x-query-id'] || resHeaders?.['query-id'];
+        if (hQid) setQueryId(hQid);
+        else {
+          setQueryId(null);
+          setReportStatus(null);
+        }
         return;
       }
 
       // PRIORITY 2: If no data array, check if it's an async report (has query_id)
       if (mode !== "both") {
-        const qId = resData?.query_id || resData?.queryId || resData?.data?.query_id || resData?.data?.queryId;
+        const qId = resData?.query_id || resData?.queryId || resData?.data?.query_id || resData?.data?.queryId || resHeaders?.['x-query-id'] || resHeaders?.['query-id'];
         const statusStr = (resData?.status || resData?.statusCode || "").toString().toUpperCase();
 
-        if (qId && (statusStr === "SUCCESS" || statusStr === "1" || statusStr === "200" || resData?.statusCode === 1)) {
-          console.log(`[TransactionReports.jsx] Async query started. ID: ${qId}`);
-          setQueryId(qId);
-          setTransactions([]);
+        if (qId && (statusStr === "SUCCESS" || statusStr === "1" || statusStr === "200" || resData?.statusCode === 1 || !statusStr)) {
+           console.log(`[TransactionReports.jsx] Async query started. ID: ${qId}`);
+           setQueryId(qId);
+           setTransactions([]);
         } else {
-          // Fallback check: maybe it returned SUCCESS but 0 rows
-          if (statusStr === "SUCCESS" || resData?.statusCode === 1) {
-            setTransactions([]);
-            return;
-          }
-          const errMsg = resData?.statusDescription || resData?.message || "Failed to generate report.";
-          throw new Error(errMsg);
+           // Fallback check: maybe it returned SUCCESS but 0 rows
+           if (statusStr === "SUCCESS" || resData?.statusCode === 1) {
+              setTransactions([]);
+              return;
+           }
+           const errMsg = resData?.statusDescription || resData?.message || "Failed to generate report.";
+           throw new Error(errMsg);
         }
       } else {
         // Mode both but no data? Clear table
@@ -148,6 +154,62 @@ export default function TransactionReports() {
       console.error(`[TransactionReports.jsx] Submission Error:`, err);
       setError(err.message || "Failed to fetch reports");
       setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initiateDownload = async () => {
+    if (!selectedVpa) return;
+    
+    setLoading(true);
+    setError(null);
+    setQueryId(null);
+    setReportStatus(null);
+    
+    let sd, ed;
+    if (filter === "Today") {
+      sd = getFormattedDate(0);
+      ed = getFormattedDate(0);
+    } else if (filter === "Monthly") {
+      const dates = getMonthStartEnd();
+      sd = dates.sd;
+      ed = dates.ed;
+    } else if (filter === "Custom Range") {
+      if (!startDateStr || !endDateStr) {
+        setError("Please select a date range");
+        setLoading(false);
+        return;
+      }
+      sd = formatInputDate(startDateStr);
+      ed = formatInputDate(endDateStr);
+    }
+
+    const payload = { 
+      vpa_id: selectedVpa,
+      startDate: sd,
+      endDate: ed,
+      mode: "excel" // Force excel mode for download button
+    };
+
+    console.log(`[TransactionReports.jsx] Initiating Excel download:`, payload);
+    try {
+      const response = await transactionReportAPI(payload);
+      const resData = response.data;
+      const resHeaders = response.headers;
+      console.log(`[TransactionReports.jsx] Download Init Response Body:`, resData);
+      console.log(`[TransactionReports.jsx] Download Init Response Headers:`, resHeaders);
+
+      const qId = resData?.query_id || resData?.queryId || resData?.data?.query_id || resData?.data?.queryId || resHeaders?.['x-query-id'] || resHeaders?.['query-id'];
+      
+      if (qId) {
+        console.log(`[TransactionReports.jsx] Download ID captured: ${qId}`);
+        setQueryId(qId);
+      } else {
+        throw new Error("Server did not provide a download ID (checked body and x-query-id header).");
+      }
+    } catch (err) {
+      setError("Download initiation failed: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -335,7 +397,7 @@ export default function TransactionReports() {
             <div className="mt-4">
               <button
                 className="flex items-center gap-2.5 px-6 py-2.5 bg-[#185bc5] hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-all shadow-md group disabled:opacity-50"
-                onClick={fetchReports}
+                onClick={initiateDownload}
                 disabled={loading}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 transition-transform group-hover:-translate-y-0.5">

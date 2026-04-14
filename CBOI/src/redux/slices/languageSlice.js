@@ -1,11 +1,11 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { languageUpdateAPI } from "../../services/api";
+import { submitLanguageUpdateAPI } from "../../services/api";
 
 export const updateLanguage = createAsyncThunk(
   "language/update",
   async (payload, { rejectWithValue }) => {
     try {
-      const response = await languageUpdateAPI(payload);
+      const response = await submitLanguageUpdateAPI(payload);
       return response.data;
     } catch (err) {
       return rejectWithValue(

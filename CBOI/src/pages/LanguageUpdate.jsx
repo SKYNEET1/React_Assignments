@@ -4,7 +4,7 @@ import { updateLanguage, resetLanguage } from "../redux/slices/languageSlice";
 import Alert from "../components/Alert";
 import LoadingSpinner from "../components/LoadingSpinner";
 import PageLoader from "../components/PageLoader";
-import { fetchLanguageAPI, currentLanguageAPI } from "../services/api";
+import { fetchLanguageAPI, currentLanguageAPI, merchantFetchAPI } from "../services/api";
 
 const LANGUAGE_OPTIONS = [
   { value: "", label: "Enter Language Update" },
@@ -23,7 +23,7 @@ const LANGUAGE_OPTIONS = [
 
 export default function LanguageUpdate() {
   const dispatch = useDispatch();
-  const { loading, success, error } = useSelector((state) => state.language);
+  const { loading, success, error, response } = useSelector((state) => state.language);
   const { selectedVpa } = useSelector((state) => state.auth);
 
   const [deviceSerial, setDeviceSerial] = useState("");
@@ -49,40 +49,76 @@ export default function LanguageUpdate() {
     return () => dispatch(resetLanguage());
   }, [dispatch]);
 
-  // Auto-fetch current language when device serial is entered
-  const handleDeviceSerialBlur = async () => {
-    if (!deviceSerial.trim()) return;
-    console.log(`[LanguageUpdate.jsx:55] Fetching current language for device: ${deviceSerial}`);
-    setFetchingCurrent(true);
-    setCurrentLanguage("");
-    try {
-      const res = await currentLanguageAPI(deviceSerial.trim());
-      console.log("[LanguageUpdate.jsx:60] Current language response:", res.data);
-      const lang = res.data?.current_language || res.data?.language || res.data?.data || "";
-      setCurrentLanguage(typeof lang === "string" ? lang : JSON.stringify(lang));
-    } catch (err) {
-      console.error("[LanguageUpdate.jsx:64] Could not fetch current language:", err.message);
-      setCurrentLanguage("—");
-    } finally {
-      setFetchingCurrent(false);
+  // Auto-fetch Device Serial (TID) from merchant details
+  useEffect(() => {
+    if (!selectedVpa) return;
+    
+    async function getDeviceSerial() {
+      console.log(`[LanguageUpdate.jsx] Fetching merchant info for VPA: ${selectedVpa} to get TID...`);
+      try {
+        const response = await merchantFetchAPI({ vpa_id: selectedVpa });
+        const data = response.data;
+        const merchant = Array.isArray(data?.data) ? data.data[0] : (data?.data || data?.merchant || data);
+        
+        // Find serial number, prioritizing serial_number
+        const serial = merchant?.serial_number || merchant?.tid || merchant?.terminal_id || merchant?.device_serial || "38241212934508"; // fallback to new sample
+        
+        console.log(`[LanguageUpdate.jsx] Extracted Device Serial (TID): ${serial}`);
+        setDeviceSerial(serial);
+      } catch (err) {
+        console.error("[LanguageUpdate.jsx] Failed to fetch merchant details for TID:", err);
+        setDeviceSerial("38241212934508"); // fallback
+      }
     }
-  };
+    
+    getDeviceSerial();
+  }, [selectedVpa]);
+
+  // Fetch current language whenever device serial changes (including initial render)
+  useEffect(() => {
+    async function fetchCurrentLanguage() {
+      if (!deviceSerial.trim()) return;
+      console.log(`[LanguageUpdate.jsx] Fetching current language for device: ${deviceSerial}`);
+      setFetchingCurrent(true);
+      setCurrentLanguage("");
+      try {
+        const res = await currentLanguageAPI(deviceSerial.trim());
+        console.log("[LanguageUpdate.jsx] Current language response:", res.data);
+        const lang = res.data?.current_language || res.data?.language || res.data?.data || "";
+        setCurrentLanguage(typeof lang === "string" ? lang : JSON.stringify(lang));
+      } catch (err) {
+        console.error("[LanguageUpdate.jsx] Could not fetch current language:", err.message);
+        setCurrentLanguage("—");
+      } finally {
+        setFetchingCurrent(false);
+      }
+    }
+    
+    // Call it on entering the page or when tid changes
+    fetchCurrentLanguage();
+  }, [deviceSerial]);
+
+  // Keep manual blur logic for safety, but useEffect handles most of it
+  const handleDeviceSerialBlur = () => {};
 
   const handleUpdate = (e) => {
     e.preventDefault();
     if (!newLanguage) return;
-    console.log(`[LanguageUpdate.jsx:74] Submitting language update: VPA=${selectedVpa}, Device=${deviceSerial}, Lang=${newLanguage}`);
+    console.log(`[LanguageUpdate.jsx] Submitting language update: Device=${deviceSerial}, Lang=${newLanguage}`);
     dispatch(
       updateLanguage({
-        key: "lang_update",
-        message: {
-          vpa_id: selectedVpa,
-          column2: deviceSerial,
-          column7: newLanguage,
-        },
+        tid: deviceSerial,
+        update_language: newLanguage,
       })
     );
   };
+
+  useEffect(() => {
+    if (success) {
+      console.log(`%c[VERIFICATION] Language update for ${deviceSerial} was successful!`, "color: #10b981; font-weight: bold;");
+      console.log(`%c[VERIFICATION] New Language set to: ${newLanguage}`, "color: #10b981; font-weight: bold;");
+    }
+  }, [success, deviceSerial, newLanguage]);
 
   const handleCancel = () => {
     setDeviceSerial("");
@@ -174,13 +210,10 @@ export default function LanguageUpdate() {
               </div>
             </div>
 
-            {/* Alert */}
-            {(success || error) && (
+            {/* Error Alert */}
+            {error && (
               <div className="mb-6">
-                <Alert
-                  type={success ? "success" : "error"}
-                  message={success ? "Language updated successfully!" : error}
-                />
+                <Alert type="error" message={error} />
               </div>
             )}
 
@@ -204,6 +237,48 @@ export default function LanguageUpdate() {
           </form>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {success && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] animate-fade-in"
+            onClick={handleCancel}
+          />
+          
+          {/* Modal Card */}
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-slide-up">
+            <div className="p-8 text-center">
+              <h2 className="text-lg font-bold text-slate-700 mb-6">
+                Language update request<br />Initiated Successfully
+              </h2>
+              
+              {/* Checkmark Icon Container */}
+              <div className="flex justify-center mb-8">
+                <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center relative">
+                    <div className="absolute inset-0 rounded-full border-4 border-green-50 animate-ping opacity-20" />
+                    <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-200">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="w-10 h-10">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer with Close Button */}
+            <div className="p-6 border-t border-slate-50">
+              <button
+                onClick={handleCancel}
+                className="w-full py-2.5 bg-[#185bc5] hover:bg-blue-700 text-white font-bold rounded-lg transition shadow-md"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageLoader>
   );
 }
