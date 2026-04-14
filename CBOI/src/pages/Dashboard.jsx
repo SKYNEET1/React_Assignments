@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { merchantFetchAPI } from "../services/api";
+import { transactionReportAPI } from "../services/api";
 import PageLoader from "../components/PageLoader";
 
 function LargeStatCard({ label, value, icon, color = "blue" }) {
@@ -28,25 +28,57 @@ function LargeStatCard({ label, value, icon, color = "blue" }) {
 
 export default function Dashboard() {
   const { selectedVpa, user } = useSelector((state) => state.auth);
-  const [stats, setStats] = useState({ transactions: 0, amount: 0 });
+  const [stats, setStats] = useState({ transactions: 0, amount: "0.00" });
   const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState("Today");
 
   useEffect(() => {
     async function fetchDashboardStats() {
       if (!selectedVpa) return;
       
-      console.log(`[Dashboard.jsx:36] Fetching stats for VPA: ${selectedVpa}`);
+      console.log(`[Dashboard.jsx:36] Fetching stats for VPA: ${selectedVpa} | Filter: ${filter}`);
       setLoading(true);
+
+      const getFormattedDate = (offsetDays = 0) => {
+        const d = new Date();
+        d.setDate(d.getDate() + offsetDays);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+      };
+
       try {
-        const response = await merchantFetchAPI({ vpa_id: selectedVpa });
+        let sd = getFormattedDate(0); 
+        let ed = getFormattedDate(0);
+
+        if (filter === "Yesterday") {
+          sd = getFormattedDate(-1);
+          ed = getFormattedDate(-1);
+        }
+
+        const payload = { 
+          startDate: sd,
+          endDate: ed,
+          vpa_id: selectedVpa, 
+          mode: "both"
+        };
+
+        console.log("[Dashboard.jsx] Final Payload Prepared:", payload);
+
+        const response = await transactionReportAPI(payload);
         console.log(`[Dashboard.jsx:41] Stats response for ${selectedVpa}:`, response.data);
         
-        // Map "Total No Of Transaction" to the number of accounts/VPAs returned (7 in your case)
-        const accountCount = response.data?.data?.length || 0;
+        // Grab values directly from API response structure
+        const totalAmountStr = response.data?.total_amount || 0;
+        const totalRowsStr = response.data?.row_count || 0;
+
+        const totalAmount = parseFloat(totalAmountStr) || 0;
+        const accountCount = parseInt(totalRowsStr, 10) || 0;
         
         setStats({
           transactions: accountCount,
-          amount: "1500.00" // Set as requested for static demonstration from fetched context
+          amount: totalAmount.toFixed(2)
         });
       } catch (err) {
         console.error(`[Dashboard.jsx:49] Failed to fetch stats for ${selectedVpa}:`, err.message);
@@ -57,7 +89,7 @@ export default function Dashboard() {
     }
 
     fetchDashboardStats();
-  }, [selectedVpa]);
+  }, [selectedVpa, filter]);
 
   return (
     <PageLoader>
@@ -77,8 +109,8 @@ export default function Dashboard() {
           <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider pr-1">Filter Range</label>
           <select 
             className="flex items-center gap-3 px-4 py-2 border border-slate-200 rounded-lg bg-white text-sm text-slate-600 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-            defaultValue="Yesterday"
-            onChange={(e) => console.log(`[Dashboard.jsx:65] Filter changed to: ${e.target.value}`)}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
           >
             <option value="Today">Today</option>
             <option value="Yesterday">Yesterday</option>

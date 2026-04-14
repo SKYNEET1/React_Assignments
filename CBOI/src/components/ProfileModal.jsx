@@ -22,8 +22,7 @@ export default function ProfileModal({ isOpen, onClose, merchantData }) {
   const deviceMobile = merchantData?.device_mobile || merchantData?.sim_number || mPhone;
   const networkType = merchantData?.network_type || merchantData?.networkType || "BSNL";
   const deviceStatus = merchantData?.device_status || merchantData?.state || "Active";
-  const batteryPct = merchantData?.battery_percentage || merchantData?.battery || "60%";
-  const networkStrength = merchantData?.network_strength || merchantData?.signal || "Strong";
+
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
@@ -89,14 +88,6 @@ export default function ProfileModal({ isOpen, onClose, merchantData }) {
               <div className="grid grid-cols-2">
                 <span className="text-[13px] font-medium text-slate-500">Device Status</span>
                 <span className="text-[13px] font-semibold text-slate-800">{deviceStatus}</span>
-              </div>
-              <div className="grid grid-cols-2">
-                <span className="text-[13px] font-medium text-slate-500">Battery Percentage</span>
-                <span className="text-[13px] font-semibold text-slate-800">{batteryPct}</span>
-              </div>
-              <div className="grid grid-cols-2">
-                <span className="text-[13px] font-medium text-slate-500">Network Strength</span>
-                <span className="text-[13px] font-semibold text-slate-800">{networkStrength}</span>
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { encryptRequest, decryptResponse } from "./cryptoService";
 const SERVICES_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
 const ENCR_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
 const USER_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
+const REPORTS_UAT = "https://services-cboi-uat.isupay.in/CBOI/reports";
 
 const PASS_KEY = "c0CKRG7yNFY3OIxY92izqj0YeMk6JPqdOlGgqsv3mhicXmAv";
 
@@ -73,14 +74,17 @@ const attachToken = (config) => {
 const apiServices = axios.create({ baseURL: SERVICES_UAT, headers: baseHeaders });
 const apiEncr = axios.create({ baseURL: ENCR_UAT, headers: baseHeaders });
 const apiUser = axios.create({ baseURL: USER_UAT, headers: baseHeaders });
+const apiReports = axios.create({ baseURL: REPORTS_UAT, headers: baseHeaders });
 
 apiServices.interceptors.request.use(attachToken);
 apiEncr.interceptors.request.use(attachToken);
 apiUser.interceptors.request.use(attachToken);
+apiReports.interceptors.request.use(attachToken);
 
 // Encrypted Execution wrappers
 const executeEncryptedPost = async (url, data) => {
-  console.log(`[api.js:86] POST Request to ${url} with data:`, data);
+  const fullUrl = `${ENCR_UAT}${url}`;
+  console.log(`[api.js:86] POST Request to ${fullUrl} with data:`, data);
   try {
     const encryptedString = await encryptRequest(data);
     const payload = { RequestData: encryptedString };
@@ -136,6 +140,8 @@ const executeEncryptedGet = async (url) => {
   }
 };
 
+
+
 export const languageUpdateAPI = (data) => {
   console.log("[api.js:138] Calling languageUpdateAPI");
   return executeEncryptedPost("/isu_soundbox/lang/status_update", { key: "lang_update", message: data });
@@ -177,5 +183,15 @@ export const checkLanguageStatusAPI = (tid) => {
 };
 export const currentLanguageAPI = (tid) => apiUser.get(`/isu_soundbox/user_api/current_language/${tid}`);
 export const submitLanguageUpdateAPI = (data) => executeEncryptedPost("/isu_soundbox/lang/update_language", data);
+
+export const transactionReportAPI = (data) => {
+  console.log(`[api.js] Calling non-encrypted transactionReportAPI. Payload:`, data);
+  return apiReports.post("/querysubmit_username", data);
+};
+
+export const reportStatusAPI = (queryId) => {
+  console.log(`[api.js] Calling non-encrypted reportStatusAPI for: ${queryId}`);
+  return apiReports.get(`/get_report_status/${queryId}`);
+};
 
 export default apiServices;

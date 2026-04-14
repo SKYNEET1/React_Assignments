@@ -12,6 +12,7 @@ export default function QrDetails() {
   const [amount, setAmount] = useState("");
   const [showQr, setShowQr] = useState(false);
   const [qrString, setQrString] = useState(null);
+  const [apiQrBase64, setApiQrBase64] = useState(null);
   const [merchantName, setMerchantName] = useState(null);
   const [merchantId, setMerchantId] = useState(null);
   
@@ -42,8 +43,9 @@ export default function QrDetails() {
         setMerchantId(id);
         setQrString(staticQs);
         
-        if (qrType === "static") {
-          setShowQr(true);
+        if (qrType === "static" && staticQs) {
+          // Instead of just showing the local SVG, fetch base64 from API
+          await fetchBase64Qr(staticQs);
         }
       } catch (err) {
         console.error("[QrDetails.jsx] Fetch error:", err);
@@ -55,6 +57,19 @@ export default function QrDetails() {
 
     fetchMerchantData();
   }, [selectedVpa, qrType]);
+
+  const fetchBase64Qr = async (payload) => {
+    try {
+      const res = await generateQRAPI({ qr_string: payload });
+      let b64 = res.data?.base64 || res.data?.qr_image || res.data?.data?.base64 || res.data;
+      if (typeof b64 === "object") b64 = JSON.stringify(b64);
+      setApiQrBase64(b64);
+      setShowQr(true);
+    } catch(err) {
+      console.error("QR Generation error", err);
+      setError("Failed to generate QR from API.");
+    }
+  };
 
   // Timer logic for dynamic QR
   useEffect(() => {
@@ -75,26 +90,43 @@ export default function QrDetails() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  const handleGenerateQR = (e) => {
+  const handleGenerateQR = async (e) => {
     if (e) e.preventDefault();
     if (qrType === "dynamic" && !amount) return;
+
+    let targetQrString = qrString;
 
     if (qrType === "dynamic") {
       // Construct Dynamic UPI String
       // upi://pay?pa=VPA&pn=NAME&am=AMOUNT&cu=INR
       const encodedName = encodeURIComponent(merchantName);
-      const dynamicString = `upi://pay?pa=${selectedVpa}&pn=${encodedName}&am=${amount}&cu=INR`;
-      setQrString(dynamicString);
+      targetQrString = `upi://pay?pa=${selectedVpa}&pn=${encodedName}&am=${amount}&cu=INR`;
+      setQrString(targetQrString);
       setActiveAmount(amount);
       setTimeLeft(300); // Reset timer to 5 mins
-      setShowQr(true);
-    } else {
-      setShowQr(true);
     }
+    
+    setFetchingData(true);
+    setError(null);
+    setApiQrBase64(null); // Clear previous
+    await fetchBase64Qr(targetQrString);
+    setFetchingData(false);
   };
 
   const handleDownload = () => {
+    // If we have base64 image from API, use it directly
+    const imgEl = document.getElementById("qr-img");
+    if (imgEl && imgEl.src) {
+      const downloadLink = document.createElement("a");
+      downloadLink.download = `CBOI_QR_${selectedVpa}.png`;
+      downloadLink.href = imgEl.src;
+      downloadLink.click();
+      return;
+    }
+
+    // Fallback if svg
     const svg = document.getElementById("qr-svg");
+    if (!svg) return;
     const svgData = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -217,14 +249,24 @@ export default function QrDetails() {
                </div>
 
                {/* QR Code */}
-               <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-inner flex items-center justify-center mb-4">
-                  <QRCodeSVG 
-                    id="qr-svg"
-                    value={qrString} 
-                    size={220} 
-                    level="H" 
-                    includeMargin={false}
-                  />
+               <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-inner flex items-center justify-center mb-4 min-h-[220px]">
+                  {apiQrBase64 ? (
+                      typeof apiQrBase64 === "string" && apiQrBase64.startsWith("data:image") ? (
+                        <img id="qr-img" src={apiQrBase64} alt="QR Code" className="w-[200px] h-[200px]" />
+                      ) : typeof apiQrBase64 === "string" && apiQrBase64.length > 100 ? (
+                        <img id="qr-img" src={`data:image/png;base64,${apiQrBase64}`} alt="QR Code" className="w-[200px] h-[200px]" />
+                      ) : (
+                        <pre className="text-[10px] text-slate-700 max-w-full overflow-hidden break-all">{apiQrBase64}</pre>
+                      )
+                  ) : (
+                      <QRCodeSVG 
+                        id="qr-svg"
+                        value={qrString} 
+                        size={220} 
+                        level="H" 
+                        includeMargin={false}
+                      />
+                  )}
                </div>
 
                {/* UPI ID */}
