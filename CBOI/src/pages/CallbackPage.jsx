@@ -4,6 +4,7 @@ import { handleCallback } from "../services/auth.Service";
 import { useDispatch } from "react-redux";
 import { setAuth, setVpaList } from "../features/auth/authSlice";
 import { decodeToken, merchantFetchAPI } from "../services/api";
+import loadingIcon from "../assets/loading_logo.png";
 
 export default function CallbackPage() {
   const navigate = useNavigate();
@@ -73,10 +74,11 @@ export default function CallbackPage() {
     run();
   }, [dispatch, navigate]);
 
+
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6 text-center">
-        <div className="w-16 h-16 border-4 border-red-100 border-t-red-600 rounded-full animate-spin mb-4" />
+        <img src={loadingIcon} alt="Error" className="w-16 h-16 animate-spin mb-4 opacity-50" />
         <h2 className="text-xl font-bold text-slate-800 mb-2">Login Failed</h2>
         <p className="text-slate-500">{error}</p>
         <p className="text-slate-400 mt-4 text-sm">Redirecting to login...</p>
@@ -86,13 +88,18 @@ export default function CallbackPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-      <div className="relative w-20 h-20 mb-8">
-        <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
-        <div className="absolute inset-0 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="flex justify-center items-center">
+        <img src={loadingIcon} alt="Loading" className="w-[80px] h-[80px] animate-spin" />
       </div>
-      <h1 className="text-2xl font-medium text-slate-700 tracking-tight">
-        Logging you in...
-      </h1>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+      `}</style>
     </div>
   );
 }

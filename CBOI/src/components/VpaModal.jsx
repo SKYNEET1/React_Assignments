@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setSelectedVpa } from "../features/auth/authSlice";
+import loadingIcon from "../assets/loading_logo.png";
 
 export default function VpaModal() {
   const dispatch = useDispatch();
@@ -90,7 +91,7 @@ export default function VpaModal() {
             }`}
           >
             {isProceeding && (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <img src={loadingIcon} alt="Loading" className="w-[18px] h-[18px] animate-spin" />
             )}
             {isProceeding ? "Proceeding..." : "Proceed"}
           </button>
