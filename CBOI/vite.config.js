@@ -13,6 +13,7 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
+    strictPort: true,
     proxy: {
       '/apiProxy': {
         target: 'https://services-cboi-uat.isupay.in',

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PiArrowLeft, PiFlagFill, PiDownloadSimple, PiUserFill, PiPaperPlaneRightFill } from 'react-icons/pi';
 import { handleEncrypt, handleDecrypt } from '../services/cryptoService';
 import { jsPDF } from 'jspdf';
 import cbioSymbol from '../assets/loading_logo.png';
 import TicketActionModal from '../components/HelpSupport/TicketActionModal';
+import PageLoader from '../components/PageLoader';
 
 const ISSUE_TYPES = ['QR', 'SIM', 'Device', 'Transaction Notification', 'Delivery Related', 'Call Drop', 'Delivery Dispute', 'Missed Call', 'Deinstallation Request', 'Wrong Device', 'Other', 'Logistics', 'Device Replacement'];
 const ISSUE_SUB_TYPES = ['Damaged QR', 'VPA ID not working', 'Extra QR requirement', 'SIM Card lost/Not received', 'Damaged Device', 'Device Activation', 'Device charging issue', 'Language updation', 'Device Feature Related', 'Welcome greeting Issue', 'Wrong Device Delivered', 'Device Delivery Status', 'Multiple Device received', 'Device Return Request', 'Transaction Sound Issue', 'Request For Callback'];
@@ -45,7 +46,7 @@ export default function TicketDetails() {
   const mockIssueSubType = ISSUE_SUB_TYPES[parseInt(id) % ISSUE_SUB_TYPES.length] || 'Device Problem';
 
   const fetchTicketDetails = useCallback(async () => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (!token) {
       setError('Session expired. Please login again.');
       setLoading(false);
@@ -140,13 +141,8 @@ export default function TicketDetails() {
   if (error) return <div className="p-8 text-center text-red-500 font-semibold bg-white rounded-lg shadow">{error}</div>;
 
   return (
-    <div className="flex flex-col gap-6 relative min-h-screen">
-      {loading && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm rounded-lg">
-          <img src={cbioSymbol} alt="Loading..." className="w-12 h-12 animate-spin mb-4" />
-          <p className="text-slate-600 font-medium font-['Inter']">Loading ticket details...</p>
-        </div>
-      )}
+    <PageLoader loading={loading}>
+      <div className="flex flex-col gap-6 relative min-h-screen">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -358,6 +354,7 @@ export default function TicketDetails() {
           ticketData={ticket}
         />
       )}
-    </div>
+      </div>
+    </PageLoader>
   );
 }

@@ -35,7 +35,7 @@ function MenuIcon() {
   );
 }
 
-export default function Sidebar({ isOpen, onToggle }) {
+export default function Sidebar({ isOpen, onToggle, style: externalStyle }) {
   const location = useLocation();
   const [helpExpanded, setHelpExpanded] = useState(false);
 
@@ -61,6 +61,7 @@ export default function Sidebar({ isOpen, onToggle }) {
         overflowX: 'hidden',
         zIndex: 50,
         transition: 'width 0.3s ease',
+        ...externalStyle
       }}
     >
 
@@ -390,6 +391,8 @@ export default function Sidebar({ isOpen, onToggle }) {
                   alignItems: 'center',
                   justifyContent: 'center',
                   background: '#FFFFFF',
+                  transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: isOpen ? 'rotate(0deg) scale(1)' : 'rotate(180deg) scale(1.1)',
                 }}
               >
                 <MenuIcon />

@@ -59,13 +59,14 @@ export default function Topbar({ isOpen, onToggleSidebar }) {
         <button 
           onClick={onToggleSidebar}
           title={isOpen ? "Collapse Menu" : "Expand Menu"}
-          className="p-1 text-slate-600 hover:text-slate-800 transition-colors rounded-md hover:bg-slate-100"
+          className="p-1 text-slate-600 hover:text-slate-800 transition-colors rounded-md hover:bg-slate-100 flex items-center justify-center relative w-8 h-8 focus:outline-none"
         >
-          {isOpen ? (
-            <RiMenuFold3Line className="w-[22px] h-[22px]" />
-          ) : (
-            <RiMenuUnfold3Line className="w-[22px] h-[22px]" />
-          )}
+          <RiMenuFold3Line 
+            className={`absolute w-[22px] h-[22px] origin-center transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] transform ${isOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-50'}`} 
+          />
+          <RiMenuUnfold3Line 
+            className={`absolute w-[22px] h-[22px] origin-center transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] transform ${isOpen ? 'opacity-0 rotate-90 scale-50' : 'opacity-100 rotate-0 scale-100'}`} 
+          />
         </button>
       </div>
 

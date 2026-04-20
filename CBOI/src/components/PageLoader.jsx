@@ -5,17 +5,21 @@ import loadingIcon from "../assets/loading_logo.png";
  * Shows a centered spinner for `delay` ms (default: 600ms), then renders children.
  * Usage: <PageLoader><YourPageContent /></PageLoader>
  */
-export default function PageLoader({ children, delay = 600 }) {
-  const [isLoading, setIsLoading] = useState(true);
+export default function PageLoader({ children, delay = 600, loading }) {
+  const [internalLoading, setInternalLoading] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
+    if (loading === undefined) {
+      const timer = setTimeout(() => {
+        setInternalLoading(false);
+      }, delay);
+      return () => clearTimeout(timer);
+    }
+  }, [delay, loading]);
 
-  if (isLoading) {
+  const activeLoading = loading !== undefined ? loading : internalLoading;
+
+  if (activeLoading) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <div className="flex justify-center items-center mb-5">

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import PageLoader from "../components/PageLoader";
 import { encryptRequest, decryptResponse } from "../services/cryptoService";
 import cbioSymbol from "../assets/loading_logo.png";
+import TicketSubmittedImg from "../assets/Ticket Submited.png";
 
 // ── Shared field component ─────────────────────────────────────────────────────
 function FormField({ label, helpText, children }) {
@@ -178,8 +179,8 @@ export default function RaiseTicket() {
     const file = e.target.files[0];
     if (!file) return;
 
-    const token = localStorage.getItem('access_token');
-    if (!token) return alert('Session expired.');
+    const token = localStorage.getItem('token');
+    if (!token) return alert('Session expired. Please login again.');
 
     const newFileObj = {
       name: file.name,
@@ -250,8 +251,11 @@ export default function RaiseTicket() {
     e.preventDefault();
     if (!isFormValid || isSubmitting) return;
 
-    const token = localStorage.getItem('access_token');
-    if (!token) return alert('Session expired.');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Session expired. Please login again.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -322,7 +326,7 @@ export default function RaiseTicket() {
   };
 
   return (
-    <PageLoader>
+    <PageLoader loading={isSubmitting || attachedFile?.isUploading}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingTop: '16px', paddingRight: '16px', paddingBottom: '16px', paddingLeft: '24px' }}>
 
         {/* ── Top Nav: 1126×72 ── */}
@@ -721,11 +725,22 @@ export default function RaiseTicket() {
                   {/* Left: PDF icon + details — wrap: gap 14 */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
                     {/* PDF icon or Loader */}
-                    <div style={{ width: '16px', height: '16px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '24px', height: '24px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {attachedFile.isUploading ? (
-                        <img src={cbioSymbol} alt="Uploading..." style={{ width: '48px', height: '48px', animation: 'spin 1.5s linear infinite' }} />
+                        <div style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <img 
+                            src={cbioSymbol} 
+                            alt="Loading..." 
+                            style={{ 
+                              width: '100%', 
+                              height: '100%', 
+                              objectFit: 'contain',
+                              animation: 'rt-spin 2s linear infinite'
+                            }} 
+                          />
+                        </div>
                       ) : (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
                           <rect x="2" y="1" width="9" height="14" rx="1" fill="#546881" opacity="0.15"/>
                           <rect x="2" y="1" width="9" height="14" rx="1" stroke="#546881" strokeWidth="1.2"/>
                           <path d="M6 1v4h5" stroke="#546881" strokeWidth="1.2" strokeLinejoin="round"/>
@@ -909,7 +924,7 @@ export default function RaiseTicket() {
               {/* Illustration area */}
               <div style={{
                 width: '100%',
-                height: '220px',
+                height: '250px',
                 background: 'linear-gradient(135deg, #EBF3FF 0%, #F0F7FF 100%)',
                 display: 'flex',
                 alignItems: 'center',
@@ -917,20 +932,11 @@ export default function RaiseTicket() {
                 flexShrink: 0,
               }}>
                 {/* Phone + checkmark illustration */}
-                <svg width="140" height="160" viewBox="0 0 140 160" fill="none">
-                  {/* Phone body */}
-                  <rect x="38" y="20" width="64" height="110" rx="10" fill="#C8DEF5" stroke="#5B9BD5" strokeWidth="2"/>
-                  <rect x="44" y="32" width="52" height="80" rx="4" fill="#EAF3FF"/>
-                  {/* Big check circle */}
-                  <circle cx="70" cy="72" r="24" fill="#156DC4" opacity="0.12"/>
-                  <circle cx="70" cy="72" r="18" fill="#156DC4"/>
-                  <path d="M61 72l6 7 12-14" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  {/* Home button */}
-                  <circle cx="70" cy="118" r="5" fill="#5B9BD5" opacity="0.5"/>
-                  {/* Person silhouette */}
-                  <ellipse cx="110" cy="130" rx="14" ry="18" fill="#546881" opacity="0.15"/>
-                  <circle cx="110" cy="108" r="8" fill="#546881" opacity="0.25"/>
-                </svg>
+                <img 
+                  src={TicketSubmittedImg} 
+                  alt="Ticket Submitted" 
+                  style={{ width: '220px', height: 'auto', objectFit: 'contain' }} 
+                />
               </div>
 
               {/* Text + action area */}

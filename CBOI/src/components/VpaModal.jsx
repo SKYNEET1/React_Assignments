@@ -33,7 +33,7 @@ export default function VpaModal() {
       style={{ top: 0, left: 0, width: '100vw', height: '100vh' }}
     >
       {/* Backdrop — full screen blur */}
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px]" />
 
       {/* Modal Card: 500×442, centered on screen */}
       <div

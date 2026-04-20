@@ -3,6 +3,9 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import PageLoader from "../components/PageLoader";
 import { encryptRequest, decryptResponse } from "../services/cryptoService";
+import * as XLSX from "xlsx";
+import { jsPDF } from "jspdf";
+import NoTicketImg from "../assets/NoTicket.png";
 
 const STATUS_OPTIONS = ["ALL", "New", "Open", "In Progress", "Solved", "Closed"];
 
@@ -31,8 +34,8 @@ export default function ViewTickets() {
   const [search, setSearch] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
 
-  const fetchTickets = useCallback(async (isSearch = false) => {
-    const token = localStorage.getItem('access_token');
+  const fetchTickets = useCallback(async () => {
+    const token = localStorage.getItem('token');
     if (!token) {
       setError('Session missing. Please login again.');
       return;
@@ -42,52 +45,31 @@ export default function ViewTickets() {
     setError(null);
 
     try {
-      if (isSearch) {
-        // FILTER TICKETS API — user clicked Submit with date + status filters
-        const filterPayload = {
-          status: (status === 'ALL' ? 'all' : status).toLowerCase(),
-          created_after: startDate,
-          created_before: endDate
-        };
+      const filterPayload = {
+        status: (status === 'ALL' ? 'all' : status).toLowerCase(),
+        created_after: startDate,
+        created_before: endDate
+      };
 
-        const encryptedBody = await encryptRequest(filterPayload);
-        const response = await fetch(import.meta.env.VITE_OIDC_FILTER_TICKETS, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `${token}`,
-            'pass_key': import.meta.env.VITE_PASS_KEY
-          },
-          body: JSON.stringify({ "RequestData": encryptedBody })
-        });
+      const encryptedBody = await encryptRequest(filterPayload);
+      const response = await fetch(import.meta.env.VITE_OIDC_FILTER_TICKETS, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${token}`,
+          'pass_key': import.meta.env.VITE_PASS_KEY
+        },
+        body: JSON.stringify({ "RequestData": encryptedBody })
+      });
 
-        if (!response.ok) throw new Error(`Filter API Error: ${response.status}`);
+      if (!response.ok) throw new Error(`Fetch Error: ${response.status}`);
 
-        const result = await response.json();
-        const decrypted = await decryptResponse(result.ResponseData);
-        setTickets(decrypted?.data && Array.isArray(decrypted.data) ? decrypted.data : []);
-
-      } else {
-        // VIEW ALL TICKETS API — initial page load with status: 'new'
-        const viewAllPayload = { status: 'new' };
-
-        const encryptedBody = await encryptRequest(viewAllPayload);
-        const response = await fetch(import.meta.env.VITE_OIDC_VIEW_ALL_TICKETS, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `${token}`,
-            'pass_key': import.meta.env.VITE_PASS_KEY
-          },
-          body: JSON.stringify({ "RequestData": encryptedBody })
-        });
-
-        if (!response.ok) throw new Error(`View All API Error: ${response.status}`);
-
-        const result = await response.json();
-        const decrypted = await decryptResponse(result.ResponseData);
-        setTickets(decrypted?.data && Array.isArray(decrypted.data) ? decrypted.data : []);
-      }
+      const result = await response.json();
+      const decrypted = await decryptResponse(result.ResponseData);
+      
+      // Handle response structure: some APIs return { data: [...] }, some return the array directly
+      const data = decrypted?.data || decrypted;
+      setTickets(Array.isArray(data) ? data : []);
 
     } catch (err) {
       console.error('Fetch Tickets Failed:', err);
@@ -100,13 +82,12 @@ export default function ViewTickets() {
   }, [status, startDate, endDate]);
 
   useEffect(() => {
-    // Initial load: fetch default set
-    fetchTickets(false);
+    fetchTickets();
   }, []);
 
   const handleSubmit = () => {
     setSearch("");
-    fetchTickets(true);
+    fetchTickets();
   };
 
   const handleReset = () => {
@@ -147,6 +128,67 @@ export default function ViewTickets() {
     });
   }, [tickets, search]);
 
+  const handleExportCSV = () => {
+    if (filteredTickets.length === 0) return;
+
+    const dataToExport = filteredTickets.map((t) => ({
+      'TICKET ID': t.id || '-',
+      'VPA ID': t.displayVpa || '-',
+      'DEVICE SERIAL NUMBER': t.displaySerial || '-',
+      'ISSUE TYPE': t.displayIssueType || '-',
+      'ISSUE SUB TYPE': t.displayIssueSubType || '-',
+      'SUBJECT': t.subject || '-',
+      'CREATED DATE': t.created_at ? new Date(t.created_at).toLocaleDateString() : '-',
+      'STATUS': t.status || '-',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets');
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(workbook, `Tickets_${dateStr}.csv`, { bookType: 'csv' });
+  };
+
+  const handleDownloadTicket = (ticket) => {
+    if (!ticket) return;
+    const doc = new jsPDF();
+
+    // Title
+    doc.setFontSize(16);
+    doc.setTextColor(30, 41, 59); // Dark blue text
+    doc.text(`${ticket.id} Ticket Information`, 20, 25);
+
+    // Line Separator
+    doc.setDrawColor(226, 232, 240);
+    doc.line(20, 30, 190, 30);
+
+    // Details
+    doc.setFontSize(11);
+    doc.setTextColor(71, 85, 105); // Gray text
+
+    const details = [
+      { label: 'Ticket ID', value: ticket.id || '-' },
+      { label: 'Created At', value: ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : '-' },
+      { label: 'VPA ID', value: ticket.displayVpa || '-' },
+      { label: 'Serial Number', value: ticket.displaySerial || '-' },
+      { label: 'Subject', value: ticket.subject || '-' },
+      { label: 'Status', value: String(ticket.status).toUpperCase() || '-' }
+    ];
+
+    let yPos = 45;
+    details.forEach(detail => {
+      doc.setFont(undefined, 'bold');
+      doc.text(`${detail.label}:`, 20, yPos);
+      doc.setFont(undefined, 'normal');
+      doc.text(`${detail.value}`, 60, yPos);
+      yPos += 12;
+    });
+
+    doc.save(`${ticket.id}_Ticket_Information.pdf`);
+    setOpenMenuId(null);
+  };
+
   const getStatusStyle = (stat) => {
     const s = (stat || "").toLowerCase();
     if (s === "solved") return { bg: "#e6f9ee", text: "#1a7f4b", dot: "#1a7f4b" };
@@ -157,13 +199,8 @@ export default function ViewTickets() {
   };
 
   return (
-    <PageLoader>
+    <PageLoader loading={loading}>
       <div className="animate-fade-in flex flex-col gap-5 relative">
-        {loading && (
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-20 flex items-center justify-center rounded-lg">
-            <span className="text-sm font-semibold text-blue-600 animate-pulse">Fetching tickets...</span>
-          </div>
-        )}
 
         {/* Page Header row — Figma: 34×34 circle arrow + Lato 500 20px title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
@@ -341,149 +378,277 @@ export default function ViewTickets() {
 
         {/* Results Area — only visible after submit */}
         {submitted && (
-          <div className="flex flex-col gap-3">
-            {/* Search + Export Row */}
-            <div className="flex items-center justify-between gap-4">
-              {/* Search bar */}
-              <div className="relative flex items-center">
-                <svg className="absolute left-3 text-slate-400 pointer-events-none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Search Here"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="border border-slate-200 rounded pl-9 pr-4 py-2 text-sm text-slate-700 outline-none focus:border-blue-400 bg-white"
-                  style={{ width: '220px' }}
-                />
+          <div style={{ width: '1128px', display: 'flex', flexDirection: 'column', gap: '0px', margin: '0 auto' }}>
+
+            {/* ── Table Toolbar: 1128×72, pad 16 ── */}
+            {filteredTickets.length > 0 && (
+              <div style={{
+                width: '1128px',
+                height: '72px',
+                padding: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#FFFFFF',
+                boxSizing: 'border-box',
+                borderBottom: '1px solid #F0F0F0',
+              }}>
+                {/* Search input — FIGMA: 180×40, border #D9D9D9, radius 4, pad 8 24 8 12 */}
+                <div style={{ position: 'relative', width: '180px', height: '40px', flexShrink: 0 }}>
+                  <svg
+                    style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#BFBFBF' }}
+                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  >
+                    <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Enter Username"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{
+                      width: '180px',
+                      height: '40px',
+                      boxSizing: 'border-box',
+                      border: '1px solid #D9D9D9',
+                      borderRadius: '4px',
+                      paddingTop: '8px',
+                      paddingBottom: '8px',
+                      paddingLeft: '34px',
+                      paddingRight: '24px',
+                      fontSize: '14px',
+                      fontFamily: '"Public Sans", sans-serif',
+                      fontWeight: 400,
+                      lineHeight: '22px',
+                      color: '#262626',
+                      background: '#FFFFFF',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                {/* Export CSV */}
+                <button
+                  onClick={handleExportCSV}
+                  style={{
+                    height: '40px',
+                    padding: '0 16px',
+                    border: '1px solid #D9D9D9',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    fontFamily: '"Public Sans", sans-serif',
+                    color: '#262626',
+                    background: '#FFFFFF',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  Export To CSV
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </button>
               </div>
+            )}
 
-              {/* Export CSV */}
-              <button
-                onClick={handleExportCSV}
-                className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded text-sm font-semibold text-slate-600 hover:bg-slate-50 transition bg-white"
-              >
-                Export To CSV
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-              </button>
-            </div>
+            {/* ── Empty State ── */}
+            {filteredTickets.length === 0 ? (
+              <div style={{
+                width: '1128px',
+                height: '494px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#FFFFFF',
+                borderRadius: '4px',
+                border: '1px solid #D9D9D9',
+                boxSizing: 'border-box',
+              }}>
+                <img src={NoTicketImg} alt="No Tickets Found" style={{ width: '240px', objectFit: 'contain' }} />
+                <h3 style={{ fontFamily: '"Public Sans", sans-serif', fontSize: '18px', fontWeight: 600, color: '#185bc5', marginTop: '16px' }}>
+                  No Tickets Found!
+                </h3>
+              </div>
+            ) : (
+              <>
+                {/* ── Table Container: Width 1128, Height 494, border #D9D9D9 ── */}
+                <div style={{
+                  width: '1128px',
+                  height: '494px',
+                  borderRadius: '4px',
+                  border: '1px solid #D9D9D9',
+                  background: '#FFFFFF',
+                  overflow: 'auto',
+                  boxSizing: 'border-box',
+                }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                      <tr>
+                        {[
+                          { label: 'Transaction ID', w: 180 },
+                          { label: 'Raised On', w: 200 },
+                          { label: 'Number', w: 180 },
+                          { label: 'Operation', w: 220 },
+                          { label: 'Status', w: 164 },
+                          { label: 'Action', w: 184 },
+                        ].map(({ label, w }, i, arr) => (
+                          <th
+                            key={label}
+                            style={{
+                              width: `${w}px`,
+                              minWidth: `${w}px`,
+                              height: '70px',
+                              background: '#FAFAFA',
+                              fontFamily: '"Public Sans", sans-serif',
+                              fontWeight: 500,
+                              fontSize: '14px',
+                              lineHeight: '22px',
+                              color: '#262626',
+                              paddingTop: '24px',
+                              paddingBottom: '24px',
+                              paddingLeft: '16px',
+                              paddingRight: '16px',
+                              whiteSpace: 'nowrap',
+                              textAlign: 'left',
+                              borderBottom: '1px solid #F0F0F0',
+                              borderRight: i < arr.length - 1 ? '1px solid #F0F0F0' : 'none',
+                              boxSizing: 'border-box',
+                              verticalAlign: 'middle',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {label}
+                              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: '2px', opacity: 0.6 }}>
+                                <svg width="8" height="4" viewBox="0 0 8 5" fill="none"><path d="M0.907837 4.14286L3.98855 0.857147L7.06926 4.14286" stroke="#D9D9D9" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                <svg width="8" height="4" viewBox="0 0 8 5" fill="none"><path d="M0.907837 0.857147L3.98855 4.14286L7.06926 0.857147" stroke="#D9D9D9" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              </span>
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTickets.map((ticket, idx) => {
+                        const statRaw = (ticket.status || '').toLowerCase();
+                        const statLabel = ticket.status ? ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1) : '-';
+                        const statusTag = (() => {
+                          if (statRaw === 'pending') return { bg: '#FC80361F', color: '#FC8036' };
+                          if (statRaw === 'resolved' || statRaw === 'solved' || statRaw === 'new') return { bg: '#52C41A1F', color: '#52C41A' };
+                          if (statRaw === 'open') return { bg: '#1890FF1F', color: '#1890FF' };
+                          if (statRaw === 'closed') return { bg: '#00000014', color: '#595959' };
+                          if (statRaw === 'in progress') return { bg: '#FAAD141F', color: '#FAAD14' };
+                          return { bg: '#E6F7FF', color: '#1890FF' };
+                        })();
+                        
+                        const tdStyle = { 
+                          height: '70px', 
+                          padding: '17px 16px', 
+                          fontFamily: '"Public Sans", sans-serif', 
+                          fontSize: '14px', 
+                          color: '#262626', 
+                          borderBottom: '1px solid #F0F0F0', 
+                          borderRight: '1px solid #F0F0F0', 
+                          boxSizing: 'border-box',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        };
 
-            {/* Table */}
-            <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm">
-              <table className="w-full text-sm text-left">
-                <thead>
-                  <tr style={{ background: '#185bc5', color: '#fff' }}>
-                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Ticket ID</th>
-                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">VPA ID</th>
-                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Device Serial<br/>Number</th>
-                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Issue Type</th>
-                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Issue Sub Type</th>
-                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Subject</th>
-                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Created Date</th>
-                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 text-center whitespace-nowrap">Status</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-center whitespace-nowrap">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTickets.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="px-4 py-12 text-center text-slate-400 text-sm">
-                        No tickets found for the selected filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredTickets.map((ticket, idx) => {
-                      const stat = ticket.status
-                        ? ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)
-                        : "-";
-                      const style = getStatusStyle(ticket.status);
-                      return (
-                        <tr
-                          key={ticket.id || idx}
-                          className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                        >
-                          <td className="px-4 py-3 text-xs font-semibold text-slate-700 border-r border-slate-100">{ticket.id || "-"}</td>
-                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{ticket.displayVpa}</td>
-                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{ticket.displaySerial}</td>
-                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{ticket.displayIssueType}</td>
-                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{ticket.displayIssueSubType}</td>
-                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{ticket.subject || "-"}</td>
-                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{formatDisplayDate(ticket.created_at)}</td>
-                          <td className="px-4 py-3 border-r border-slate-100 text-center">
-                            <span
-                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                              style={{ background: style.bg, color: style.text }}
-                            >
-                              <span
-                                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                style={{ background: style.dot }}
-                              />
-                              {stat}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center relative">
-                            <button
-                              onClick={() => setOpenMenuId(openMenuId === (ticket.id || idx) ? null : (ticket.id || idx))}
-                              className="text-slate-500 hover:text-slate-800 transition"
-                            >
-                              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 mx-auto">
-                                <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
-                              </svg>
-                            </button>
-                            {openMenuId === (ticket.id || idx) && (
-                              <div
-                                className="absolute right-4 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-30 py-1 min-w-[130px]"
-                                onMouseLeave={() => setOpenMenuId(null)}
+                        return (
+                          <tr
+                            key={ticket.id || idx}
+                            style={{ height: '70px' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FAFAFA'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <td style={tdStyle}>{ticket.id || '-'}</td>
+                            <td style={tdStyle}>{formatDisplayDate(ticket.created_at)}</td>
+                            <td style={tdStyle}>{ticket.registeredMobile || ticket.customer_number || ticket.mobile || '-'}</td>
+                            <td style={tdStyle}>{ticket.displayIssueType || '-'}</td>
+                            <td style={{ ...tdStyle }}>
+                              <span style={{ display: 'inline-block', borderRadius: '4px', padding: '1px 8px', background: statusTag.bg, fontFamily: '"Public Sans", sans-serif', fontSize: '12px', lineHeight: '20px', color: statusTag.color }}>{statLabel}</span>
+                            </td>
+                            <td style={{ ...tdStyle, borderRight: 'none' }}>
+                              <button onClick={() => navigate(`/ticket-details/${ticket.id}`)} 
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: '"Public Sans", sans-serif', fontSize: '14px', color: '#185bc5', fontWeight: 500, padding: 0 }}
+                                onMouseEnter={e => e.target.style.textDecoration = 'underline'}
+                                onMouseLeave={e => e.target.style.textDecoration = 'none'}
                               >
-                                <button
-                                  onClick={() => { setOpenMenuId(null); navigate(`/ticket-details/${ticket.id}`); }}
-                                  className="w-full text-left px-4 py-2 text-xs text-slate-600 hover:bg-slate-50 font-medium"
-                                >
-                                  View Details
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                                View Details
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
 
-            {/* Pagination */}
-            <div className="flex justify-center mt-2 mb-3">
-              <div className="flex items-center gap-2">
-                <button
-                  disabled
-                  className="w-8 h-8 flex items-center justify-center border border-slate-200 rounded bg-white opacity-40 cursor-not-allowed"
-                >
-                  <svg width="6" height="10" viewBox="0 0 7 11" fill="none">
-                    <path d="M6 1L1 5.5L6 10" stroke="#BFBFBF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                <button
-                  className="w-8 h-8 flex items-center justify-center border rounded text-sm font-semibold"
-                  style={{ borderColor: '#185bc5', color: '#185bc5', background: '#fff' }}
-                >
-                  1
-                </button>
-                <button
-                  disabled
-                  className="w-8 h-8 flex items-center justify-center border border-slate-200 rounded bg-white opacity-40 cursor-not-allowed"
-                >
-                  <svg width="6" height="10" viewBox="0 0 7 11" fill="none">
-                    <path d="M1 1L6 5.5L1 10" stroke="#BFBFBF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
+                {/* ── Pagination ── */}
+                <div style={{ width: '1128px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', marginBottom: '16px', padding: '0 4px', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontFamily: '"Public Sans", sans-serif', fontSize: '14px', color: '#595959' }}>Row per page</span>
+                    <select style={{ border: '1px solid #D9D9D9', borderRadius: '4px', padding: '0 8px', height: '32px', width: '60px', fontSize: '14px', color: '#262626', background: '#fff', outline: 'none', cursor: 'pointer' }}>
+                      <option>10</option><option>25</option><option>50</option>
+                    </select>
+                    
+                    <span style={{ fontFamily: '"Public Sans", sans-serif', fontSize: '14px', color: '#595959', marginLeft: '8px' }}>Go to</span>
+                    <input 
+                      type="text" 
+                      defaultValue="9"
+                      style={{ 
+                        width: '36px', 
+                        height: '32px', 
+                        border: '1px solid #D9D9D9', 
+                        borderRadius: '4px', 
+                        textAlign: 'center', 
+                        fontSize: '14px', 
+                        fontFamily: '"Public Sans", sans-serif',
+                        outline: 'none',
+                        color: '#262626'
+                      }} 
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button disabled style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #F0F0F0', borderRadius: '4px', background: '#FFFFFF', cursor: 'not-allowed' }}>
+                      <svg width="6" height="10" viewBox="0 0 7 11" fill="none"><path d="M6 1L1 5.5L6 10" stroke="#BFBFBF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </button>
+                    {[1, '...', 4, 5, 6, 7, 8, '...', 50].map((p, i) => {
+                      const isActive = p === 6;
+                      const isEllipsis = p === '...';
+                      return (
+                        <button 
+                          key={i} 
+                          disabled={isEllipsis}
+                          style={{ 
+                            width: '32px', 
+                            height: '32px', 
+                            border: isActive ? '1px solid #1890FF' : (isEllipsis ? 'none' : '1px solid #F0F0F0'), 
+                            borderRadius: '4px', 
+                            background: isActive ? '#1890FF' : 'transparent', 
+                            color: isActive ? '#FFFFFF' : (isEllipsis ? '#BFBFBF' : '#595959'), 
+                            fontWeight: isActive ? 600 : 400, 
+                            fontSize: '14px', 
+                            fontFamily: '"Public Sans", sans-serif',
+                            cursor: isEllipsis ? 'default' : 'pointer'
+                          }}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                    <button disabled style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #F0F0F0', borderRadius: '4px', background: '#FFFFFF', cursor: 'not-allowed' }}>
+                      <svg width="6" height="10" viewBox="0 0 7 11" fill="none"><path d="M1 1L6 5.5L1 10" stroke="#BFBFBF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
