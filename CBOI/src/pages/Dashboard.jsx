@@ -104,8 +104,7 @@ export default function Dashboard() {
         </div>
 
         {/* Filter Dropdown */}
-        <div className="flex flex-col items-end gap-1 shrink-0 transition-all duration-300">
-          <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider pr-1">Filter Range</label>
+        <div className="flex flex-col items-end shrink-0 transition-all duration-300">
           <select 
             className="flex items-center gap-3 px-6 py-3 border border-slate-200 rounded-xl bg-white text-sm text-slate-600 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer shadow-sm"
             value={filter}

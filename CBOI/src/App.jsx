@@ -9,6 +9,7 @@ import CampaignUpdate from "./pages/CampaignUpdate";
 import MerchantFetch from "./pages/MerchantFetch";
 import RaiseTicket from "./pages/RaiseTicket";
 import ViewTickets from "./pages/ViewTickets";
+import TicketDetails from "./pages/TicketDetails";
 import TransactionReports from "./pages/TransactionReports";
 import QrDetails from "./pages/QrDetails";
 import Layout from "./components/Layout";
@@ -34,6 +35,7 @@ function App() {
           <Route path="/merchant-fetch" element={<MerchantFetch />} />
           <Route path="/raise-ticket" element={<RaiseTicket />} />
           <Route path="/view-tickets" element={<ViewTickets />} />
+          <Route path="/ticket-details/:id" element={<TicketDetails />} />
           <Route path="/transaction-reports" element={<TransactionReports />} />
           <Route path="/qr-details" element={<QrDetails />} />
         </Route>

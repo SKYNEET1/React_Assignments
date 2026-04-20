@@ -184,7 +184,7 @@ export const checkLanguageStatusAPI = (tid) => {
   console.log(`[api.js] Calling checkLanguageStatusAPI for TID: ${tid}`);
   return executeEncryptedGet(`/isu_soundbox/lang/status_check/${tid}`);
 };
-export const currentLanguageAPI = (tid) => executeEncryptedGet(`/isu_soundbox/user_api/current_language/${tid}`);
+export const currentLanguageAPI = (tid) => apiPlain.get(`/isu_soundbox/user_api/current_language/${tid}`);
 export const submitLanguageUpdateAPI = (data) => executeEncryptedPost("/isu_soundbox/lang/update_language", data);
 
 export const transactionReportAPI = (data) => {

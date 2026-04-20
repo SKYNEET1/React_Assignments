@@ -4,6 +4,7 @@ import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
+// Trigger reload after react-icons installation
 export default defineConfig({
   plugins: [
     react(),
@@ -17,6 +18,11 @@ export default defineConfig({
         target: 'https://services-cboi-uat.isupay.in',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/apiProxy/, '')
+      },
+      '/txnInfraProxy': {
+        target: 'https://api-preprod.txninfra.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/txnInfraProxy/, '')
       }
     }
   }

@@ -1,228 +1,458 @@
 // ViewTickets.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import PageLoader from "../components/PageLoader";
-import PageHeader from "../components/PageHeader";
+import { encryptRequest, decryptResponse } from "../services/cryptoService";
 
 const STATUS_OPTIONS = ["ALL", "New", "Open", "In Progress", "Solved", "Closed"];
 
-const todayStr = () => {
-  const d = new Date();
+const toInputDate = () => new Date().toISOString().split("T")[0];
+
+const formatDisplayDate = (iso) => {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
-};
-
-const toInputDate = () => {
-  const d = new Date();
-  return d.toISOString().split("T")[0];
+  return `${dd}-${mm}-${yyyy}`;
 };
 
 export default function ViewTickets() {
-  // [ViewTickets.jsx:18]
-  const [status, setStatus] = useState("ALL");
+  const navigate = useNavigate();
+
   const [startDate, setStartDate] = useState(toInputDate());
   const [endDate, setEndDate] = useState(toInputDate());
+  const [status, setStatus] = useState("ALL");
   const [submitted, setSubmitted] = useState(false);
   const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
+  const [openMenuId, setOpenMenuId] = useState(null);
+
+  const fetchTickets = useCallback(async () => {
+    const token = localStorage.getItem("access_token");
+    if (!token) { setError("Session missing. Please login again."); return; }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const filterPayload = {
+        status: status === "ALL" ? "all" : status.toLowerCase(),
+        created_after: startDate,
+        created_before: endDate,
+      };
+
+      const encryptedBody = await encryptRequest(filterPayload);
+      const response = await fetch(import.meta.env.VITE_OIDC_FILTER_TICKETS, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `${token}`,
+          "pass_key": import.meta.env.VITE_PASS_KEY,
+        },
+        body: JSON.stringify({ RequestData: encryptedBody }),
+      });
+
+      if (!response.ok) throw new Error(`Error: ${response.status}`);
+
+      const result = await response.json();
+      const decrypted = await decryptResponse(result.ResponseData);
+      setTickets(Array.isArray(decrypted?.data) ? decrypted.data : []);
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Fetch Tickets Failed:", err);
+      setError(err.message || "Failed to fetch tickets.");
+      setTickets([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [status, startDate, endDate]);
 
   const handleSubmit = () => {
-    // [ViewTickets.jsx:27] — filter logic hook point
-    console.log("[ViewTickets.jsx:27] Submitting filter:", { status, startDate, endDate });
-    setSubmitted(true);
-    setTickets([]); // Replace with real API call
+    setSearch("");
+    fetchTickets();
   };
 
   const handleReset = () => {
-    // [ViewTickets.jsx:33]
-    setStatus("ALL");
     setStartDate(toInputDate());
     setEndDate(toInputDate());
+    setStatus("ALL");
     setSubmitted(false);
     setTickets([]);
+    setSearch("");
+    setError(null);
   };
 
-  const formatDisplayDate = (iso) => {
-    if (!iso) return "";
-    const [y, m, d] = iso.split("-");
-    return `${d}/${m}/${y}`;
+  const handleExportCSV = () => {
+    if (!tickets.length) return;
+    const headers = ["Ticket ID", "VPA ID", "Device Serial Number", "Issue Type", "Issue Sub Type", "Subject", "Created Date", "Status"];
+    const rows = filteredTickets.map(t => [
+      t.id || "-",
+      t.vpa_id || "-",
+      t.device_serial_number || t.serial_no || "-",
+      t.issue_type || "-",
+      t.issue_sub_type || "-",
+      t.subject || "-",
+      formatDisplayDate(t.created_at),
+      t.status || "-",
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tickets_${startDate}_to_${endDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const filteredTickets = tickets.filter(t =>
+    (t.id?.toString() || "").toLowerCase().includes(search.toLowerCase()) ||
+    (t.vpa_id || "").toLowerCase().includes(search.toLowerCase()) ||
+    (t.issue_type || "").toLowerCase().includes(search.toLowerCase()) ||
+    (t.subject || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const getStatusStyle = (stat) => {
+    const s = (stat || "").toLowerCase();
+    if (s === "solved") return { bg: "#e6f9ee", text: "#1a7f4b", dot: "#1a7f4b" };
+    if (s === "new") return { bg: "#e6f9ee", text: "#1a7f4b", dot: "#1a7f4b" };
+    if (s === "open") return { bg: "#fff7e6", text: "#b45309", dot: "#b45309" };
+    if (s === "closed") return { bg: "#f1f5f9", text: "#64748b", dot: "#64748b" };
+    return { bg: "#e0f2fe", text: "#0284c7", dot: "#0284c7" };
   };
 
   return (
     <PageLoader>
-      {/* [ViewTickets.jsx:47] */}
-      <div className="animate-fade-in space-y-0">
+      <div className="animate-fade-in flex flex-col gap-5 relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-20 flex items-center justify-center rounded-lg">
+            <span className="text-sm font-semibold text-blue-600 animate-pulse">Fetching tickets...</span>
+          </div>
+        )}
 
-        {/* Page Header */}
-        <PageHeader title="View Tickets" />
+        {/* Page Header row — Figma: 34×34 circle arrow + Lato 500 20px title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          {/* Back Arrow: 34×34, border-radius 84px, border 1px #EFEFEF, shadow */}
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '84px',
+              border: '1px solid #EFEFEF',
+              background: '#FFFFFF',
+              boxShadow: '1px 2px 4px 0px rgba(89,89,89,0.12)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+              padding: 0,
+            }}
+            title="Go Back"
+          >
+            {/* Vector: 18.28×16, color #546881 */}
+            <svg width="18" height="16" viewBox="0 0 20 16" fill="none">
+              <path d="M19 8H1M1 8L8 1M1 8L8 15" stroke="#546881" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
 
-        {/* Filter Card */}
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm px-6 py-5">
-          <div className="flex items-end gap-5 flex-wrap">
+          {/* "View Tickets": Lato, 500, 20px, line-height 120% */}
+          <span style={{
+            fontFamily: 'Lato, sans-serif',
+            fontWeight: 500,
+            fontSize: '20px',
+            lineHeight: '120%',
+            letterSpacing: '0%',
+            color: '#0F1010',
+          }}>
+            View Tickets
+          </span>
+        </div>
 
-            {/* Select Status */}
-            <div className="flex-1 min-w-[160px]">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Select Status</label>
-              <div className="relative">
-                <select
-                  id="vt_status"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full border border-slate-300 rounded-md px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none appearance-none bg-white pr-8"
-                >
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                  className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+        {/* Filter Section — full width, no card border */}
+        <div style={{ width: '100%', paddingBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
 
-            {/* Start Date */}
-            <div className="flex-1 min-w-[160px]">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Start Date</label>
-              <div className="relative">
+            {/* Left: inputs group */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '20px', flex: 1 }}>
+
+              {/* Start Date */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                <label style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '13px', color: '#1D242D' }}>Start Date</label>
                 <input
-                  id="vt_start_date"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full border border-slate-300 rounded-md px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none"
+                  style={{
+                    width: '100%',
+                    height: '40px',
+                    border: '1px solid #D0D5DD',
+                    borderRadius: '4px',
+                    padding: '0 12px',
+                    fontSize: '13px',
+                    color: '#546881',
+                    outline: 'none',
+                    background: '#fff',
+                    fontFamily: 'Lato, sans-serif',
+                    boxSizing: 'border-box',
+                  }}
                 />
               </div>
-            </div>
 
-            {/* End Date */}
-            <div className="flex-1 min-w-[160px]">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">End Date</label>
-              <div className="relative">
+              {/* End Date */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                <label style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '13px', color: '#1D242D' }}>End Date</label>
                 <input
-                  id="vt_end_date"
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full border border-slate-300 rounded-md px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none"
+                  style={{
+                    width: '100%',
+                    height: '40px',
+                    border: '1px solid #D0D5DD',
+                    borderRadius: '4px',
+                    padding: '0 12px',
+                    fontSize: '13px',
+                    color: '#546881',
+                    outline: 'none',
+                    background: '#fff',
+                    fontFamily: 'Lato, sans-serif',
+                    boxSizing: 'border-box',
+                  }}
                 />
+              </div>
+
+              {/* Ticket Status */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                <label style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '13px', color: '#1D242D' }}>Ticket Status</label>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '40px',
+                      border: '1px solid #D0D5DD',
+                      borderRadius: '4px',
+                      padding: '0 32px 0 12px',
+                      fontSize: '13px',
+                      color: '#546881',
+                      outline: 'none',
+                      background: '#fff',
+                      appearance: 'none',
+                      fontFamily: 'Lato, sans-serif',
+                      cursor: 'pointer',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{s === "ALL" ? "All" : s}</option>
+                    ))}
+                  </select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#546881" strokeWidth="2.5"
+                    style={{ width: '14px', height: '14px', position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3 pb-0.5">
+            {/* Right: Buttons */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', flexShrink: 0 }}>
               <button
-                id="vt_submit_btn"
-                onClick={handleSubmit}
-                className="px-7 py-2.5 bg-[#185bc5] text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition"
-              >
-                Submit
-              </button>
-              <button
-                id="vt_reset_btn"
                 onClick={handleReset}
-                className="px-7 py-2.5 bg-[#185bc5] text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition"
+                style={{
+                  height: '40px',
+                  padding: '0 32px',
+                  background: '#185bc5',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  fontFamily: 'Inter, sans-serif',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
               >
                 Reset
               </button>
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                style={{
+                  height: '40px',
+                  padding: '0 32px',
+                  background: '#185bc5',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  fontFamily: 'Inter, sans-serif',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Submit
+              </button>
             </div>
           </div>
+          {error && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '8px' }}>{error}</p>}
         </div>
 
-        {/* Results Area */}
-        {submitted && tickets.length === 0 ? (
-          /* Empty State */
-          <div className="flex flex-col items-center justify-center py-20">
-            {/* Illustration */}
-            <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-6 opacity-90">
-              {/* Sky / ground blobs */}
-              <ellipse cx="100" cy="145" rx="80" ry="12" fill="#dbeafe" opacity="0.5"/>
-              {/* Back blob */}
-              <ellipse cx="80" cy="110" rx="60" ry="50" fill="#bfdbfe" opacity="0.5"/>
-              {/* Dome top */}
-              <ellipse cx="80" cy="68" rx="38" ry="38" fill="#93c5fd" opacity="0.7"/>
-              <rect x="44" y="68" width="72" height="10" rx="2" fill="#93c5fd" opacity="0.5"/>
-              {/* Question mark circle */}
-              <circle cx="80" cy="72" r="18" fill="white" opacity="0.85"/>
-              <text x="80" y="79" textAnchor="middle" fontSize="20" fontWeight="bold" fill="#3b82f6">?</text>
-              {/* Person silhouette */}
-              <circle cx="148" cy="75" r="14" fill="#93c5fd"/>
-              <ellipse cx="148" cy="108" rx="18" ry="28" fill="#60a5fa"/>
-              {/* Person hair */}
-              <ellipse cx="148" cy="67" rx="10" ry="6" fill="#1e3a5f"/>
-              {/* Person face */}
-              <circle cx="148" cy="76" r="10" fill="#fcd9b6"/>
-              {/* Arm extended */}
-              <line x1="131" y1="100" x2="110" y2="85" stroke="#60a5fa" strokeWidth="7" strokeLinecap="round"/>
-            </svg>
-            <p className="text-slate-400 text-sm">No tickets found for the selected filters.</p>
-          </div>
-        ) : !submitted ? (
-          /* Default idle state illustration */
-          <div className="flex flex-col items-center justify-center py-20">
-            <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-6 opacity-90">
-              <ellipse cx="100" cy="145" rx="80" ry="12" fill="#dbeafe" opacity="0.5"/>
-              <ellipse cx="80" cy="110" rx="60" ry="50" fill="#bfdbfe" opacity="0.5"/>
-              <ellipse cx="80" cy="68" rx="38" ry="38" fill="#93c5fd" opacity="0.7"/>
-              <rect x="44" y="68" width="72" height="10" rx="2" fill="#93c5fd" opacity="0.5"/>
-              <circle cx="80" cy="72" r="18" fill="white" opacity="0.85"/>
-              <text x="80" y="79" textAnchor="middle" fontSize="20" fontWeight="bold" fill="#3b82f6">?</text>
-              <circle cx="148" cy="75" r="14" fill="#93c5fd"/>
-              <ellipse cx="148" cy="108" rx="18" ry="28" fill="#60a5fa"/>
-              <ellipse cx="148" cy="67" rx="10" ry="6" fill="#1e3a5f"/>
-              <circle cx="148" cy="76" r="10" fill="#fcd9b6"/>
-              <line x1="131" y1="100" x2="110" y2="85" stroke="#60a5fa" strokeWidth="7" strokeLinecap="round"/>
-            </svg>
-            <p className="text-slate-400 text-sm">Select filters and click Submit to view tickets.</p>
-          </div>
-        ) : (
-          /* Ticket Table */
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mt-5">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-[#185bc5] text-white font-medium text-[13px]">
-                <tr>
-                  <th className="px-4 py-4 font-medium border-x border-blue-600">Ticket ID</th>
-                  <th className="px-4 py-4 font-medium border-x border-blue-600">VPA ID</th>
-                  <th className="px-4 py-4 font-medium border-x border-blue-600">Device Serial Number</th>
-                  <th className="px-4 py-4 font-medium border-x border-blue-600">Issue Type</th>
-                  <th className="px-4 py-4 font-medium border-x border-blue-600">Issue Sub Type</th>
-                  <th className="px-4 py-4 font-medium border-x border-blue-600">Subject</th>
-                  <th className="px-4 py-4 font-medium border-x border-blue-600">Created Date</th>
-                  <th className="px-4 py-4 font-medium border-x border-blue-600 text-center">Status</th>
-                  <th className="px-4 py-4 font-medium border-x border-blue-600 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="text-slate-600 text-[13px] font-medium">
-                {tickets.map((ticket, idx) => (
-                  <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3.5 border-x border-slate-100">{ticket.id}</td>
-                    <td className="px-4 py-3.5 border-x border-slate-100">{ticket.vpa}</td>
-                    <td className="px-4 py-3.5 border-x border-slate-100">{ticket.serial}</td>
-                    <td className="px-4 py-3.5 border-x border-slate-100">{ticket.type}</td>
-                    <td className="px-4 py-3.5 border-x border-slate-100">{ticket.subType}</td>
-                    <td className="px-4 py-3.5 border-x border-slate-100">{ticket.subject}</td>
-                    <td className="px-4 py-3.5 border-x border-slate-100">{ticket.date}</td>
-                    <td className="px-4 py-3.5 border-x border-slate-100 text-center">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold w-max ${
-                        ticket.status === "Solved"
-                          ? "bg-[#eefcf4] text-[#1f9d55] border border-[#1f9d55]/20"
-                          : "bg-[#e0f2fe] text-[#0284c7] border border-[#0284c7]/20"
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${ticket.status === "Solved" ? "bg-[#1f9d55]" : "bg-[#0284c7]"}`} />
-                        {ticket.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 border-x border-slate-100 text-center text-slate-400">
-                      <button className="hover:text-slate-700">
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mx-auto">
-                          <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
-                        </svg>
-                      </button>
-                    </td>
+
+        {/* Results Area — only visible after submit */}
+        {submitted && (
+          <div className="flex flex-col gap-3">
+            {/* Search + Export Row */}
+            <div className="flex items-center justify-between gap-4">
+              {/* Search bar */}
+              <div className="relative flex items-center">
+                <svg className="absolute left-3 text-slate-400 pointer-events-none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search Here"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="border border-slate-200 rounded pl-9 pr-4 py-2 text-sm text-slate-700 outline-none focus:border-blue-400 bg-white"
+                  style={{ width: '220px' }}
+                />
+              </div>
+
+              {/* Export CSV */}
+              <button
+                onClick={handleExportCSV}
+                className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded text-sm font-semibold text-slate-600 hover:bg-slate-50 transition bg-white"
+              >
+                Export To CSV
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Table */}
+            <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm">
+              <table className="w-full text-sm text-left">
+                <thead>
+                  <tr style={{ background: '#185bc5', color: '#fff' }}>
+                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Ticket ID</th>
+                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">VPA ID</th>
+                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Device Serial<br/>Number</th>
+                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Issue Type</th>
+                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Issue Sub Type</th>
+                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Subject</th>
+                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 whitespace-nowrap">Created Date</th>
+                    <th className="px-4 py-3 font-semibold text-xs border-r border-blue-500 text-center whitespace-nowrap">Status</th>
+                    <th className="px-4 py-3 font-semibold text-xs text-center whitespace-nowrap">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredTickets.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-12 text-center text-slate-400 text-sm">
+                        No tickets found for the selected filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTickets.map((ticket, idx) => {
+                      const stat = ticket.status
+                        ? ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)
+                        : "-";
+                      const style = getStatusStyle(ticket.status);
+                      return (
+                        <tr
+                          key={ticket.id || idx}
+                          className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                        >
+                          <td className="px-4 py-3 text-xs font-semibold text-slate-700 border-r border-slate-100">{ticket.id || "-"}</td>
+                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{ticket.vpa_id || "-"}</td>
+                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{ticket.device_serial_number || ticket.serial_no || "-"}</td>
+                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{ticket.issue_type || "-"}</td>
+                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{ticket.issue_sub_type || "-"}</td>
+                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{ticket.subject || "-"}</td>
+                          <td className="px-4 py-3 text-xs text-slate-600 border-r border-slate-100">{formatDisplayDate(ticket.created_at)}</td>
+                          <td className="px-4 py-3 border-r border-slate-100 text-center">
+                            <span
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                              style={{ background: style.bg, color: style.text }}
+                            >
+                              <span
+                                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                style={{ background: style.dot }}
+                              />
+                              {stat}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center relative">
+                            <button
+                              onClick={() => setOpenMenuId(openMenuId === (ticket.id || idx) ? null : (ticket.id || idx))}
+                              className="text-slate-500 hover:text-slate-800 transition"
+                            >
+                              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 mx-auto">
+                                <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+                              </svg>
+                            </button>
+                            {openMenuId === (ticket.id || idx) && (
+                              <div
+                                className="absolute right-4 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-30 py-1 min-w-[130px]"
+                                onMouseLeave={() => setOpenMenuId(null)}
+                              >
+                                <button
+                                  onClick={() => { setOpenMenuId(null); navigate(`/ticket-details/${ticket.id}`); }}
+                                  className="w-full text-left px-4 py-2 text-xs text-slate-600 hover:bg-slate-50 font-medium"
+                                >
+                                  View Details
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex justify-center mt-2 mb-3">
+              <div className="flex items-center gap-2">
+                <button
+                  disabled
+                  className="w-8 h-8 flex items-center justify-center border border-slate-200 rounded bg-white opacity-40 cursor-not-allowed"
+                >
+                  <svg width="6" height="10" viewBox="0 0 7 11" fill="none">
+                    <path d="M6 1L1 5.5L6 10" stroke="#BFBFBF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <button
+                  className="w-8 h-8 flex items-center justify-center border rounded text-sm font-semibold"
+                  style={{ borderColor: '#185bc5', color: '#185bc5', background: '#fff' }}
+                >
+                  1
+                </button>
+                <button
+                  disabled
+                  className="w-8 h-8 flex items-center justify-center border border-slate-200 rounded bg-white opacity-40 cursor-not-allowed"
+                >
+                  <svg width="6" height="10" viewBox="0 0 7 11" fill="none">
+                    <path d="M1 1L6 5.5L1 10" stroke="#BFBFBF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
