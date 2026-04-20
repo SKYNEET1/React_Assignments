@@ -81,4 +81,8 @@ export async function decryptResponse(cipherText) {
     throw err;
   }
 }
+
+// Aliases for compatibility with provided snippet logic
+export const handleEncrypt = encryptRequest;
+export const handleDecrypt = decryptResponse;
   

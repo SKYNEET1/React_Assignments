@@ -8,10 +8,10 @@ import { RiQrCodeLine } from "react-icons/ri";
 import { MdOutlineTranslate } from "react-icons/md";
 
 const navItems = [
-  { path: "/dashboard",           label: "Dashboard",           icon: <AiOutlineDashboard /> },
+  { path: "/dashboard", label: "Dashboard", icon: <AiOutlineDashboard /> },
   { path: "/transaction-reports", label: "Transaction Reports", icon: <HiOutlineDocumentText /> },
-  { path: "/qr-details",          label: "QR Details",          icon: <RiQrCodeLine /> },
-  { path: "/language-update",     label: "Language Update",     icon: <MdOutlineTranslate /> },
+  { path: "/qr-details", label: "QR Details", icon: <RiQrCodeLine /> },
+  { path: "/language-update", label: "Language Update", icon: <MdOutlineTranslate /> },
 ];
 
 /* ── Hamburger / menu icon (matches the "side trigger" / "manifold" in Figma) ── */
@@ -192,7 +192,7 @@ export default function Sidebar({ isOpen, onToggle }) {
                         <span
                           style={{
                             fontFamily: "'Public Sans', sans-serif",
-                            fontWeight: 400,
+                            fontWeight: 500,
                             fontSize: '14px',
                             lineHeight: '22px',
                             letterSpacing: '0%',
@@ -261,7 +261,7 @@ export default function Sidebar({ isOpen, onToggle }) {
                       <span
                         style={{
                           fontFamily: "'Public Sans', sans-serif",
-                          fontWeight: 400,
+                          fontWeight: 500,
                           fontSize: '14px',
                           lineHeight: '22px',
                           color: helpExpanded && isOpen ? '#156DC4' : '#3e4c5e',
@@ -316,7 +316,7 @@ export default function Sidebar({ isOpen, onToggle }) {
                         <svg viewBox="0 0 24 24" fill="none" stroke={isActive ? '#156DC4' : '#54657a'} strokeWidth="2" style={{ width: '14px', height: '14px', flexShrink: 0 }}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                         </svg>
-                        <span style={{ fontFamily: "'Public Sans', sans-serif", fontWeight: 400, fontSize: '13.5px', lineHeight: '22px', color: isActive ? '#156DC4' : '#54657a' }}>
+                        <span style={{ fontFamily: "'Public Sans', sans-serif", fontWeight: 500, fontSize: '13.5px', lineHeight: '22px', color: isActive ? '#156DC4' : '#54657a' }}>
                           Raise Ticket
                         </span>
                       </>
@@ -343,7 +343,7 @@ export default function Sidebar({ isOpen, onToggle }) {
                         <svg viewBox="0 0 24 24" fill="none" stroke={isActive ? '#156DC4' : '#54657a'} strokeWidth="2" style={{ width: '14px', height: '14px', flexShrink: 0 }}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                         </svg>
-                        <span style={{ fontFamily: "'Public Sans', sans-serif", fontWeight: 400, fontSize: '13.5px', lineHeight: '22px', color: isActive ? '#156DC4' : '#54657a' }}>
+                        <span style={{ fontFamily: "'Public Sans', sans-serif", fontWeight: 500, fontSize: '13.5px', lineHeight: '22px', color: isActive ? '#156DC4' : '#54657a' }}>
                           View Tickets
                         </span>
                       </>

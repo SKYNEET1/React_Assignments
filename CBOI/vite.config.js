@@ -23,6 +23,11 @@ export default defineConfig({
         target: 'https://api-preprod.txninfra.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/txnInfraProxy/, '')
+      },
+      '/servicesTxnProxy': {
+        target: 'https://services.txninfra.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/servicesTxnProxy/, '')
       }
     }
   }

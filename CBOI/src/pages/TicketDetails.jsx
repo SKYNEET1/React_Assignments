@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PiArrowLeft, PiFlagFill, PiDownloadSimple, PiUserFill, PiPaperPlaneRightFill } from 'react-icons/pi';
-import { encryptRequest, decryptResponse } from '../services/cryptoService';
+import { handleEncrypt, handleDecrypt } from '../services/cryptoService';
 import { jsPDF } from 'jspdf';
 import cbioSymbol from '../assets/loading_logo.png';
 import TicketActionModal from '../components/HelpSupport/TicketActionModal';
@@ -12,7 +12,6 @@ const ISSUE_SUB_TYPES = ['Damaged QR', 'VPA ID not working', 'Extra QR requireme
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
@@ -41,10 +40,11 @@ export default function TicketDetails() {
   const vpaId = merchantDetails.vpa_id || '-';
   const serialNo = merchantDetails.serial_number || merchantDetails.serial_no || '-';
 
+  // Deterministic Mock Values fallback
   const mockIssueType = ISSUE_TYPES[parseInt(id) % ISSUE_TYPES.length] || 'Hardware';
-  const mockIssueSubType = ISSUE_SUB_TYPES[parseInt(id) % ISSUE_SUB_TYPES.length] || 'Device Not Working';
+  const mockIssueSubType = ISSUE_SUB_TYPES[parseInt(id) % ISSUE_SUB_TYPES.length] || 'Device Problem';
 
-  const fetchTicketDetails = async () => {
+  const fetchTicketDetails = useCallback(async () => {
     const token = localStorage.getItem('access_token');
     if (!token) {
       setError('Session expired. Please login again.');
@@ -55,7 +55,7 @@ export default function TicketDetails() {
     setLoading(true);
     try {
       const payload = { ticket_id: parseInt(id) };
-      const encryptedBody = await encryptRequest(payload);
+      const encryptedBody = await handleEncrypt(payload);
 
       const response = await fetch(import.meta.env.VITE_OIDC_VIEW_TICKET, {
         method: 'POST',
@@ -64,23 +64,22 @@ export default function TicketDetails() {
           'Authorization': `${token}`,
           'pass_key': import.meta.env.VITE_PASS_KEY
         },
-        body: JSON.stringify({ RequestData: encryptedBody })
+        body: JSON.stringify({ "RequestData": encryptedBody })
       });
 
       if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
       const result = await response.json();
-      const decrypted = await decryptResponse(result.ResponseData);
+      const decrypted = await handleDecrypt(result.ResponseData);
 
       if (decrypted && decrypted.data) {
         setTicket(decrypted.data);
       } else {
-        // Fallback for demo purposes if backend fails/returns empty while building
-        throw new Error('Details not found');
+        throw new Error('Ticket details not found.');
       }
     } catch (err) {
       console.error('Fetch Ticket Details Failed:', err);
-      // Generate mock ticket for UI demo if API fails
+      // Fallback for demo if API fails
       setTicket({
         id: id,
         issue_type: mockIssueType,
@@ -89,18 +88,17 @@ export default function TicketDetails() {
         status: 'open',
         vpa_id: vpaId,
         device_serial_number: serialNo,
-        description: 'The user is requesting a review of their ticket details. This represents sample placeholder description for the issue.',
+        description: 'Mock data since API returned empty or 404. Proceed with testing UI layout.',
         comments: []
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, vpaId, serialNo, mockIssueType, mockIssueSubType]);
 
   useEffect(() => {
     fetchTicketDetails();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [fetchTicketDetails]);
 
   const handleDownloadPDF = () => {
     if (!ticket) return;
@@ -227,8 +225,8 @@ export default function TicketDetails() {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-500 font-semibold font-['Inter'] uppercase tracking-wider">Status</label>
-              <div className="mt-1 flex items-center w-max gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#e0f2fe] text-[#0284c7] border border-[#0284c7]/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#0284c7]" />
+              <div className={`mt-1 flex items-center w-max gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${ticket?.status?.toLowerCase() === 'solved' ? 'bg-[#e6f9ee] text-[#1a7f4b]' : 'bg-[#e0f2fe] text-[#0284c7]'} border border-current/20`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current" />
                 {ticket?.status || 'Pending'}
               </div>
             </div>

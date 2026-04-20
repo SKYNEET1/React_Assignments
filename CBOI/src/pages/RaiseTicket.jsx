@@ -1,4 +1,3 @@
-// RaiseTicket.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageLoader from "../components/PageLoader";
@@ -93,38 +92,69 @@ export default function RaiseTicket() {
           "index": import.meta.env.VITE_OIDC_FORM_INDEX,
           "type": "em",
           "query": {
-            "nested": {
-              "path": "forms",
-              "query": {
-                "bool": {
-                  "must": [{ "match": { "forms.id": 47501075391257 } }]
+            "query": {
+              "nested": {
+                "path": "forms",
+                "query": {
+                  "bool": {
+                    "must": [
+                      {
+                        "match": {
+                          "forms.id": 47501075391257
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             }
           }
         };
+
         const response = await fetch(import.meta.env.VITE_OIDC_FORM_FETCH, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(body)
         });
-        if (!response.ok) return;
+
+        
+
+
+        if (!response.ok) throw new Error('Failed to fetch form structure');
+
         const result = await response.json();
         const hits = result?.data?.hits;
+
         if (hits?.length) {
           const ticketFields = hits[0]?._source?.forms?.[0]?.ticket_fields;
+
           if (Array.isArray(ticketFields)) {
-            const issueTypeField = ticketFields.find(f => f.title?.trim().toLowerCase() === "issue type");
-            if (issueTypeField?.custom_field_options) setIssueTypes(issueTypeField.custom_field_options);
-            
-            const issueSubTypeField = ticketFields.find(f => f.title?.trim().toLowerCase() === "issue sub-type" || f.title?.trim().toLowerCase() === "issue sub type");
-            if (issueSubTypeField?.custom_field_options) setIssueSubTypes(issueSubTypeField.custom_field_options);
+            // Find Issue Type field
+            const issueTypeField = ticketFields.find(
+              field => field.title?.trim().toLowerCase() === "issue type"
+            );
+            if (issueTypeField?.custom_field_options) {
+              setIssueTypes(issueTypeField.custom_field_options);
+            }
+
+            // Find Issue Sub-type field
+            const issueSubTypeField = ticketFields.find(
+              field =>
+                field.title?.trim().toLowerCase() === "issue sub-type" ||
+                field.title?.trim().toLowerCase() === "issue sub type"
+            );
+            if (issueSubTypeField?.custom_field_options) {
+              setIssueSubTypes(issueSubTypeField.custom_field_options);
+            }
           }
         }
       } catch (err) {
         console.error('Dynamic form loading failed:', err);
       }
     };
+
     fetchFormStructure();
   }, []);
 
