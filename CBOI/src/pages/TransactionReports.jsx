@@ -27,6 +27,16 @@ export default function TransactionReports() {
   const [currentPage, setCurrentPage] = useState(1);
   const [goToPage, setGoToPage] = useState("1");
 
+  // Keep GoTo input in sync with currentPage
+  useEffect(() => {
+    setGoToPage(currentPage.toString());
+  }, [currentPage]);
+
+  // Reset page when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, search, rowsPerPage]);
+
   const getFormattedDate = (offsetDays = 0) => {
     const d = new Date();
     d.setDate(d.getDate() + offsetDays);
@@ -331,118 +341,228 @@ export default function TransactionReports() {
           </div>
         </div>
 
-        {error && <Alert type="error" message={error} className="mb-6" />}
-
-        {/* Action Bar (Toolbar) */}
-        <div 
-          className="flex items-center justify-between mb-0 mt-8 bg-white border border-slate-100 border-b-0"
-          style={{ width: '1128px', height: '72px', padding: '16px', borderRadius: '4px 4px 0 0' }}
+        {/* ── Full Table Container: 1128×494 ── */}
+        <div
+          style={{
+            width: '1128px',
+            height: '494px',
+            borderRadius: '4px',
+            border: '1px solid var(--Secondary-3, #F0F0F0)',
+            background: '#FFFFFF',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
         >
-          <div 
-            className="relative"
-            style={{ width: '180px', height: '40px' }}
-          >
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search here..."
-              className="w-full h-full pl-3 pr-6 py-2 border border-slate-200 rounded-[4px] text-sm bg-white focus:outline-none placeholder-slate-300 italic"
-            />
-          </div>
 
-          <div className="flex items-center gap-4">
+          {/* ── Toolbar: 1128×72, padding 16px ── */}
+          <div
+            style={{
+              width: '1128px',
+              height: '72px',
+              padding: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexShrink: 0,
+              borderBottom: '1px solid var(--Secondary-3, #F0F0F0)',
+            }}
+          >
+            {/* Search input: 180×40 */}
+            <div
+              style={{
+                width: '180px',
+                height: '40px',
+                borderRadius: '4px',
+                border: '1px solid var(--Secondary-4, #D9D9D9)',
+                background: 'var(--Other-Color-A1, #FFFFFF)',
+                display: 'flex',
+                alignItems: 'center',
+                paddingTop: '8px',
+                paddingRight: '24px',
+                paddingBottom: '8px',
+                paddingLeft: '12px',
+                gap: '12px',
+                boxSizing: 'border-box',
+              }}
+            >
+              {/* Search icon: 13.19×14 */}
+              <svg
+                width="13.19"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                style={{ flexShrink: 0 }}
+              >
+                <circle cx="6" cy="6" r="5" stroke="#8C8C8C" strokeWidth="1.5" />
+                <path d="M10 10L13 13" stroke="#8C8C8C" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              {/* Input text */}
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search here..."
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  outline: 'none',
+                  fontFamily: "'Public Sans', sans-serif",
+                  fontWeight: 400,
+                  fontSize: '14px',
+                  lineHeight: '22px',
+                  color: '#262626',
+                  background: 'transparent',
+                  width: '90px',
+                  height: '22px',
+                }}
+                className="placeholder-[#BFBFBF]"
+              />
+            </div>
+
+            {/* Download All / Status button: 142×40 */}
             {queryId ? (
-              <div className="">
-                {reportStatus?.status === "READY" ? (
-                  <a href={reportStatus.signed_url} target="_blank" rel="noreferrer" 
-                    className="flex items-center justify-center gap-2 bg-[#156DC4] border border-[#1890FF] text-white text-sm font-normal rounded-[4px] shadow-[0_2px_0_0_rgba(0,0,0,0.043)] transition-all"
-                    style={{ width: '142px', height: '40px', padding: '9px 16px' }}
-                  >
+              reportStatus?.status === 'READY' ? (
+                <a
+                  href={reportStatus.signed_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    width: '142px',
+                    height: '40px',
+                    borderRadius: '4px',
+                    padding: '9px 16px',
+                    background: '#156DC4',
+                    border: '1px solid var(--Primary-6, #1890FF)',
+                    boxShadow: '0px 2px 0px 0px #0000000B',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    textDecoration: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M8 1v9M4 7l4 4 4-4M2 12v2h12v-2" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span style={{ fontFamily: "'Public Sans', sans-serif", fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#FFFFFF', textAlign: 'center' }}>
                     Download All
-                  </a>
-                ) : (
-                  <button
-                    onClick={async () => {
-                      try {
-                        console.log(`[TransactionReports.jsx] Checking status for queryId: ${queryId}`);
-                        setLoading(true);
-                        const res = await reportStatusAPI(queryId);
-                        if (res.data?.data) {
-                          setReportStatus(res.data.data);
-                          if (res.data.data.status === "READY") {
-                            setError(null);
-                            const reportPayload = res.data.data;
-                            if (Array.isArray(reportPayload.data)) setTransactions(reportPayload.data);
-                            else if (Array.isArray(reportPayload.transactions)) setTransactions(reportPayload.transactions);
-                            else if (Array.isArray(res.data.data_array)) setTransactions(res.data.data_array);
-                          } else {
-                            setError("Report is still " + res.data.data.status + ". Please wait.");
-                          }
+                  </span>
+                </a>
+              ) : (
+                <button
+                  onClick={async () => {
+                    try {
+                      console.log(`[TransactionReports.jsx] Checking status for queryId: ${queryId}`);
+                      setLoading(true);
+                      const res = await reportStatusAPI(queryId);
+                      if (res.data?.data) {
+                        setReportStatus(res.data.data);
+                        if (res.data.data.status === 'READY') {
+                          setError(null);
+                          const reportPayload = res.data.data;
+                          if (Array.isArray(reportPayload.data)) setTransactions(reportPayload.data);
+                          else if (Array.isArray(reportPayload.transactions)) setTransactions(reportPayload.transactions);
+                          else if (Array.isArray(res.data.data_array)) setTransactions(res.data.data_array);
+                        } else {
+                          setError('Report is still ' + res.data.data.status + '. Please wait.');
                         }
-                      } catch (err) {
-                        setError("Status check failed: " + err.message);
-                      } finally {
-                        setLoading(false);
                       }
-                    }}
-                    disabled={loading}
-                    className="flex items-center justify-center gap-2 bg-[#156DC4] border border-[#1890FF] text-white text-sm font-normal rounded-[4px] shadow-[0_2px_0_0_rgba(0,0,0,0.043)] transition-all"
-                    style={{ width: '142px', height: '40px', padding: '9px 16px' }}
-                  >
-                    {loading ? "..." : "Status"}
-                  </button>
-                )}
-              </div>
+                    } catch (err) {
+                      setError('Status check failed: ' + err.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  style={{
+                    width: '142px',
+                    height: '40px',
+                    borderRadius: '4px',
+                    padding: '9px 16px',
+                    background: '#156DC4',
+                    border: '1px solid var(--Primary-6, #1890FF)',
+                    boxShadow: '0px 2px 0px 0px #0000000B',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <span style={{ fontFamily: "'Public Sans', sans-serif", fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#FFFFFF', textAlign: 'center' }}>
+                    {loading ? '...' : 'Check Status'}
+                  </span>
+                </button>
+              )
             ) : (
               <button
-                className="flex items-center justify-center gap-2 bg-[#156DC4] border border-[#1890FF] text-white text-sm font-normal rounded-[4px] shadow-[0_2px_0_0_rgba(0,0,0,0.043)] transition-all"
-                style={{ width: '142px', height: '40px', padding: '9px 16px' }}
                 onClick={initiateDownload}
                 disabled={loading}
+                style={{
+                  width: '142px',
+                  height: '40px',
+                  borderRadius: '4px',
+                  padding: '9px 16px',
+                  background: '#156DC4',
+                  border: '1px solid var(--Primary-6, #1890FF)',
+                  boxShadow: '0px 2px 0px 0px #0000000B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  boxSizing: 'border-box',
+                }}
               >
-                <span style={{ fontFamily: 'Public Sans', fontSize: '14px', lineHeight: '22px' }}>Download All</span>
+                {/* Download icon: 16×16 */}
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                  <path d="M8 1v9M4 7l4 4 4-4M2 12v2h12v-2" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span style={{ fontFamily: "'Public Sans', sans-serif", fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#FFFFFF', textAlign: 'center' }}>
+                  Download All
+                </span>
               </button>
             )}
           </div>
-        </div>
 
-        {/* Data Table */}
-        <div className="bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-100 overflow-hidden">
-          <div className="min-h-[400px]">
+          {/* ── Columns / Data Table: 1128×350 ── */}
+          <div style={{ width: '1128px', height: '350px', overflow: 'hidden', flexShrink: 0 }}>
             {loading ? (
-              <div className="flex items-center justify-center h-[400px]">
-                <img src={loadingIcon} alt="Loading" className="w-[42px] h-[42px] animate-spin" />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '350px' }}>
+                <img src={loadingIcon} alt="Loading" style={{ width: '42px', height: '42px' }} className="animate-spin" />
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[400px] text-slate-400">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="w-16 h-16 mb-4 opacity-20">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '350px', color: '#8C8C8C' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ width: '64px', height: '64px', marginBottom: '16px', opacity: 0.2 }}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <p className="font-medium lowercase first-letter:uppercase italic">No transaction records found</p>
+                <p style={{ fontFamily: "'Public Sans', sans-serif", fontSize: '14px' }}>No transaction records found</p>
               </div>
             ) : (
-              <table className="w-full text-left" style={{ width: '1128px' }}>
-                <thead style={{ background: 'var(--Secondary-1, #FAFAFA)', boxShadow: '-18px 0px 0px -17px #0000000F' }}>
+              <table style={{ width: '1128px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                <thead style={{ background: 'var(--Secondary-1, #FAFAFA)' }}>
                   <tr>
-                    <th style={{ width: '112px', height: '70px', padding: '0 20px', fontSize: '14px', fontWeight: '500', color: '#000000D9' }}>SL NO</th>
-                    <th style={{ width: '254px', height: '70px', padding: '0 16px', fontSize: '14px', fontWeight: '500', color: '#000000D9' }}>Transaction ID</th>
-                    <th style={{ width: '254px', height: '70px', padding: '0 16px', fontSize: '14px', fontWeight: '500', color: '#000000D9' }}>Amount</th>
-                    <th style={{ width: '254px', height: '70px', padding: '0 16px', fontSize: '14px', fontWeight: '500', color: '#000000D9' }}>Date & Time</th>
-                    <th style={{ width: '254px', height: '70px', padding: '0 16px', fontSize: '14px', fontWeight: '500', color: '#000000D9', textAlign: 'center' }}>Status</th>
+                    <th style={{ width: '112px', height: '56px', padding: '0 20px', fontFamily: "'Public Sans', sans-serif", fontSize: '14px', fontWeight: 500, color: '#000000D9', textAlign: 'left', borderBottom: '1px solid #F0F0F0' }}>S. No.</th>
+                    <th style={{ width: '254px', height: '56px', padding: '0 16px', fontFamily: "'Public Sans', sans-serif", fontSize: '14px', fontWeight: 500, color: '#000000D9', textAlign: 'left', borderBottom: '1px solid #F0F0F0' }}>Transaction ID</th>
+                    <th style={{ width: '254px', height: '56px', padding: '0 16px', fontFamily: "'Public Sans', sans-serif", fontSize: '14px', fontWeight: 500, color: '#000000D9', textAlign: 'left', borderBottom: '1px solid #F0F0F0' }}>Amount</th>
+                    <th style={{ width: '254px', height: '56px', padding: '0 16px', fontFamily: "'Public Sans', sans-serif", fontSize: '14px', fontWeight: 500, color: '#000000D9', textAlign: 'left', borderBottom: '1px solid #F0F0F0' }}>Date &amp; Time</th>
+                    <th style={{ width: '254px', height: '56px', padding: '0 16px', fontFamily: "'Public Sans', sans-serif", fontSize: '14px', fontWeight: 500, color: '#000000D9', textAlign: 'center', borderBottom: '1px solid #F0F0F0' }}>Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage).map((txn, idx) => (
-                    <tr key={txn.Transaction_Id || idx} style={{ height: '70px' }}>
-                      <td style={{ width: '112px', padding: '0 20px', fontSize: '14px', color: '#000000D9' }}>{(currentPage - 1) * rowsPerPage + idx + 1}</td>
-                      <td style={{ width: '254px', padding: '0 16px', fontSize: '14px', color: '#000000D9' }}>{txn.Transaction_Id || "8a33f29c8079444792f65b86"}</td>
-                      <td style={{ width: '254px', padding: '0 16px', fontSize: '14px', color: '#000000D9' }}>
+                    <tr key={txn.Transaction_Id || idx} style={{ height: '58px', borderBottom: '1px solid #F0F0F0' }}>
+                      <td style={{ width: '112px', padding: '0 20px', fontFamily: "'Public Sans', sans-serif", fontSize: '14px', color: '#000000D9' }}>{(currentPage - 1) * rowsPerPage + idx + 1}</td>
+                      <td style={{ width: '254px', padding: '0 16px', fontFamily: "'Public Sans', sans-serif", fontSize: '14px', color: '#000000D9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{txn.Transaction_Id || '8a33f29c8079444792f65b86'}</td>
+                      <td style={{ width: '254px', padding: '0 16px', fontFamily: "'Public Sans', sans-serif", fontSize: '14px', color: '#000000D9' }}>
                         ₹ {parseFloat(txn.Transaction_Amount || 454.85).toFixed(2)}
                       </td>
-                      <td style={{ width: '254px', padding: '0 16px', fontSize: '14px', color: '#000000D9' }}>{txn["Date_&_Time"] || "13/04/2026 14:42"}</td>
+                      <td style={{ width: '254px', padding: '0 16px', fontFamily: "'Public Sans', sans-serif", fontSize: '14px', color: '#000000D9' }}>{txn['Date_&_Time'] || '13/04/2026 14:42'}</td>
                       <td style={{ width: '254px', padding: '0 16px', textAlign: 'center' }}>
-                        <span className="inline-flex items-center px-3 py-1 bg-green-50 text-green-600 text-[12px] font-medium rounded-md border border-green-100">
+                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 12px', background: '#F6FFED', color: '#52C41A', fontSize: '12px', fontFamily: "'Public Sans', sans-serif", fontWeight: 500, borderRadius: '4px', border: '1px solid #B7EB8F' }}>
                           Received
                         </span>
                       </td>
@@ -453,73 +573,247 @@ export default function TransactionReports() {
             )}
           </div>
 
-          {/* Pagination Footer */}
-          <div 
-            className="bg-white border-t border-slate-100 flex items-center justify-center rounded-b-xl"
-            style={{ width: '1128px', height: '72px', padding: '16px' }}
+          {/* ── Pagination: 1128×72, padding 16px ── */}
+          <div
+            style={{
+              width: '1128px',
+              height: '72px',
+              padding: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              flexShrink: 0,
+              borderTop: '1px solid var(--Secondary-3, #F0F0F0)',
+            }}
           >
-            <div 
-              className="flex items-center justify-between"
-              style={{ width: '1096px', height: '40px' }}
-            >
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-3 text-sm text-slate-500">
-                  <span>Rows per page:</span>
-                  <select
-                    value={rowsPerPage}
-                    onChange={(e) => {
-                      setRowsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="bg-white border border-slate-200 rounded-md py-1 px-2 focus:outline-none"
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                  </select>
-                </div>
-                <div className="text-sm text-slate-400 font-medium">
-                  Showing {filtered.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} - {Math.min(currentPage * rowsPerPage, filtered.length)} of {filtered.length}
-                </div>
+            {/* Inner: 1096×40, justify-content: space-between */}
+            <div style={{ width: '1096px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+
+              {/* LEFT — Pagination options: 246×40, gap 8px */}
+              <div style={{ width: '246px', height: '40px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* "Row per page" text */}
+                <span style={{ fontFamily: "'Public Sans', sans-serif", fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#8C8C8C', whiteSpace: 'nowrap' }}>
+                  Row per page
+                </span>
+                {/* Size changer: 57×40 */}
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                  style={{
+                    width: '57px',
+                    height: '40px',
+                    borderRadius: '4px',
+                    border: '1px solid var(--Secondary-4, #D9D9D9)',
+                    background: 'var(--Other-Color-A1, #FFFFFF)',
+                    paddingTop: '8px',
+                    paddingRight: '12px',
+                    paddingBottom: '8px',
+                    paddingLeft: '12px',
+                    fontFamily: "'Public Sans', sans-serif",
+                    fontWeight: 400,
+                    fontSize: '14px',
+                    lineHeight: '22px',
+                    color: '#262626',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+                {/* Go to input: 41×40 */}
+                <span style={{ fontFamily: "'Public Sans', sans-serif", fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#8C8C8C', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  Go to
+                </span>
+                <input
+                  type="text"
+                  value={goToPage}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || /^\d+$/.test(val)) {
+                      setGoToPage(val);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
+                      const p = Math.max(1, Math.min(totalPages, Number(goToPage) || 1));
+                      setCurrentPage(p);
+                      setGoToPage(p.toString());
+                    }
+                  }}
+                  onBlur={() => {
+                    const totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
+                    const p = Math.max(1, Math.min(totalPages, Number(goToPage) || 1));
+                    setCurrentPage(p);
+                    setGoToPage(p.toString());
+                  }}
+                  style={{
+                    width: '41px',
+                    height: '40px',
+                    borderRadius: '4px',
+                    border: '1px solid var(--Secondary-4, #D9D9D9)',
+                    background: 'var(--Other-Color-A1, #FFFFFF)',
+                    paddingTop: '8px',
+                    paddingRight: '4px',
+                    paddingBottom: '8px',
+                    paddingLeft: '4px',
+                    fontFamily: "'Public Sans', sans-serif",
+                    fontWeight: 400,
+                    fontSize: '14px',
+                    lineHeight: '22px',
+                    color: '#262626',
+                    outline: 'none',
+                    textAlign: 'center',
+                    boxSizing: 'border-box',
+                  }}
+                />
               </div>
 
-              <div className="flex items-center gap-1">
+              {/* RIGHT — Prev / Next navigation: content width 432, height 32, gap 8px */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '32px' }}>
+                {/* Previous: 32x32, border-radius 4, padding 10, border #F0F0F0 (disabled) */}
                 <button
                   disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(1)}
-                  className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-md border border-transparent disabled:opacity-20 transition-all font-bold"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
-                </button>
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => prev - 1)}
-                  className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-md border border-transparent disabled:opacity-20 transition-all font-bold"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
-                </button>
-                
-                <button
-                  disabled={currentPage === Math.ceil(filtered.length / rowsPerPage) || filtered.length === 0}
-                  onClick={() => setCurrentPage(prev => prev + 1)}
-                  className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-md border border-transparent disabled:opacity-20 transition-all font-bold"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
-                </button>
-                <button
-                  disabled={currentPage === Math.ceil(filtered.length / rowsPerPage) || filtered.length === 0}
-                  onClick={() => {
-                    const last = Math.ceil(filtered.length / rowsPerPage);
-                    setCurrentPage(last);
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid var(--Secondary-3, #F0F0F0)',
+                    borderRadius: '4px',
+                    background: '#FFFFFF',
+                    padding: '10px',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    boxSizing: 'border-box',
                   }}
-                  className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-md border border-transparent disabled:opacity-20 transition-all font-bold"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                  <svg width="6.38" height="10.15" viewBox="0 0 7 11" fill="none">
+                    <path
+                      d="M6 1L1 5.5L6 10"
+                      stroke={currentPage === 1 ? '#BFBFBF' : '#262626'}
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+
+                {/* Page numbers: 32x32, padding 1x7, border-radius 4 (or 2) */}
+                {(() => {
+                  const total = Math.ceil(filtered.length / rowsPerPage) || 1;
+                  const pages = [];
+                  const addPage = (n) => pages.push(
+                    <button
+                      key={n}
+                      onClick={() => setCurrentPage(n)}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '1px 7px',
+                        border: currentPage === n ? '1px solid #156DC4' : '1px solid var(--Secondary-3, #F0F0F0)',
+                        borderRadius: '4px',
+                        background: currentPage === n ? '#156DC4' : '#FFFFFF',
+                        color: currentPage === n ? '#FFFFFF' : 'var(--Secondary-8, #262626)',
+                        fontFamily: "'Public Sans', sans-serif",
+                        fontWeight: 400,
+                        fontSize: '14px',
+                        lineHeight: '22px',
+                        cursor: 'pointer',
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      {n}
+                    </button>
+                  );
+                  const addEllipsis = (k) => pages.push(
+                    <span
+                      key={k}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontFamily: 'Arial',
+                        fontWeight: 400,
+                        fontSize: '14px',
+                        lineHeight: '32px',
+                        letterSpacing: '2px',
+                        color: 'var(--Secondary-4, #D9D9D9)',
+                      }}
+                    >
+                      •••
+                    </span>
+                  );
+
+                  // Build range: always include page 1, last page, and ±2 around current
+                  const rangeSet = new Set([1, total]);
+                  for (let i = currentPage - 2; i <= currentPage + 2; i++) {
+                    if (i >= 1 && i <= total) rangeSet.add(i);
+                  }
+                  const range = Array.from(rangeSet).sort((a, b) => a - b);
+
+                  // Render pages + ellipsis for gaps
+                  let prev = null;
+                  range.forEach((n, idx) => {
+                    if (prev !== null) {
+                      const gap = n - prev;
+                      if (gap === 2) {
+                        // Gap of exactly 1 missing page: just show that page
+                        addPage(prev + 1);
+                      } else if (gap > 2) {
+                        // Larger gap: show ellipsis
+                        addEllipsis(`e${idx}`);
+                      }
+                    }
+                    addPage(n);
+                    prev = n;
+                  });
+                  return pages;
+                })()}
+
+                {/* Next: 32x32, padding 10, border #D9D9D9 (normal) */}
+                <button
+                  disabled={currentPage === Math.ceil(filtered.length / rowsPerPage) || filtered.length === 0}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid var(--Secondary-4, #D9D9D9)',
+                    borderRadius: '4px',
+                    background: '#FFFFFF',
+                    padding: '10px',
+                    cursor: (currentPage === Math.ceil(filtered.length / rowsPerPage) || filtered.length === 0) ? 'not-allowed' : 'pointer',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <svg width="6.38" height="10.15" viewBox="0 0 7 11" fill="none">
+                    <path
+                      d="M1 1L6 5.5L1 10"
+                      stroke={(currentPage === Math.ceil(filtered.length / rowsPerPage) || filtered.length === 0) ? '#BFBFBF' : '#262626'}
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </button>
               </div>
+
             </div>
           </div>
-        </div>
+
+        </div>{/* /Table container */}
       </div>
     </PageLoader>
   );
