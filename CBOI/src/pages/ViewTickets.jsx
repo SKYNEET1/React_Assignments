@@ -1,6 +1,7 @@
 // ViewTickets.jsx
 import React, { useState } from "react";
 import PageLoader from "../components/PageLoader";
+import PageHeader from "../components/PageHeader";
 
 const STATUS_OPTIONS = ["ALL", "New", "Open", "In Progress", "Solved", "Closed"];
 
@@ -53,12 +54,7 @@ export default function ViewTickets() {
       <div className="animate-fade-in space-y-0">
 
         {/* Page Header */}
-        <div className="flex items-center gap-2 mb-5">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-slate-500">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <h1 className="text-base font-bold text-slate-800">Help &amp; Support</h1>
-        </div>
+        <PageHeader title="View Tickets" />
 
         {/* Filter Card */}
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm px-6 py-5">

@@ -2,26 +2,25 @@ import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { transactionReportAPI } from "../services/api";
 import PageLoader from "../components/PageLoader";
+import PageHeader from "../components/PageHeader";
 
 function LargeStatCard({ label, value, icon, color = "blue" }) {
-  const bgColors = {
-    blue: "bg-blue-50/50",
-    indigo: "bg-indigo-50/50",
-  };
   const iconColors = {
     blue: "bg-blue-100 text-[#185bc5]",
     indigo: "bg-indigo-100 text-indigo-600",
   };
 
   return (
-    <div className="bg-white rounded-2xl p-8 flex items-center justify-between shadow-sm border border-slate-50 flex-1">
+    <div 
+      className="bg-white rounded-xl px-6 py-4 flex items-center justify-between shadow-sm border border-slate-100 flex-1 hover:shadow-md transition-all duration-300"
+    >
       <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${iconColors[color]}`}>
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconColors[color]} transition-all`}>
           {icon}
         </div>
         <span className="text-sm font-medium text-slate-500">{label}</span>
       </div>
-      <span className="text-4xl font-bold text-slate-800">{value}</span>
+      <span className="text-2xl font-semibold text-slate-800 tabular-nums">{value}</span>
     </div>
   );
 }
@@ -93,22 +92,22 @@ export default function Dashboard() {
 
   return (
     <PageLoader>
-    <div className="animate-fade-in">
+    <div className="animate-fade-in w-full transition-all duration-300">
       {/* Header Section */}
-      <div className="flex items-start justify-between mb-10">
+      <div className="flex items-start justify-between mb-12 w-full transition-all duration-300">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-1">Dashboard</h1>
-          <div className="flex items-center gap-1.5 text-sm">
-            <span className="text-slate-500 font-medium">VPA ID :</span>
+          <PageHeader title="Dashboard" />
+          <div className="flex items-center gap-1.5 text-sm -mt-6">
+            <span className="text-slate-500 font-medium whitespace-nowrap">VPA ID :</span>
             <span className="text-blue-600 font-semibold">{selectedVpa || "Not Selected"}</span>
           </div>
         </div>
 
         {/* Filter Dropdown */}
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-end gap-1 shrink-0 transition-all duration-300">
           <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider pr-1">Filter Range</label>
           <select 
-            className="flex items-center gap-3 px-4 py-2 border border-slate-200 rounded-lg bg-white text-sm text-slate-600 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+            className="flex items-center gap-3 px-6 py-3 border border-slate-200 rounded-xl bg-white text-sm text-slate-600 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer shadow-sm"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
@@ -119,7 +118,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="flex flex-col md:flex-row gap-6">
+      <div className="flex flex-col lg:flex-row gap-10 w-full transition-all duration-300">
         <LargeStatCard
           label="Total No Of Transaction"
           value={loading ? "..." : stats.transactions}
@@ -142,18 +141,7 @@ export default function Dashboard() {
         />
       </div>
       
-      {/* Footer Log for visibility as requested */}
-      <div className="mt-12 p-4 bg-slate-50 rounded-lg border border-slate-100">
-        <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest mb-2 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-          Dashboard Activity Log
-        </p>
-        <div className="space-y-1">
-          <p className="text-[10px] text-slate-500 font-mono">
-            {`[Dashboard.jsx:105] Stats rendered for VPA: ${selectedVpa} | Txns: ${stats.transactions} | Amt: ${stats.amount}`}
-          </p>
-        </div>
-      </div>
+
     </div>
     </PageLoader>
   );

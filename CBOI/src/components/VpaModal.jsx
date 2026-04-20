@@ -7,16 +7,14 @@ export default function VpaModal() {
   const dispatch = useDispatch();
   const vpaList = useSelector((state) => state.auth.vpaList);
   const selectedVpa = useSelector((state) => state.auth.selectedVpa);
-  
+
   const [localSelected, setLocalSelected] = useState(selectedVpa || "");
   const [isProceeding, setIsProceeding] = useState(false);
 
   const handleProceed = () => {
     if (localSelected) {
-      console.log(`[VpaModal.jsx:16] User selected VPA: ${localSelected}. Starting proceed flow.`);
+      console.log(`[VpaModal.jsx:17] User selected VPA: ${localSelected}. Starting proceed flow.`);
       setIsProceeding(true);
-      
-      // Artificial delay to show loading state as requested
       setTimeout(() => {
         console.log(`[VpaModal.jsx:21] Proceeding to Dashboard with VPA: ${localSelected}`);
         dispatch(setSelectedVpa(localSelected));
@@ -25,54 +23,156 @@ export default function VpaModal() {
     }
   };
 
-
   // If already selected, don't show the modal
   if (selectedVpa) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
+    // Full-screen overlay — blurs sidebar + content area
+    <div
+      className="fixed z-[100] flex items-center justify-center"
+      style={{ top: 0, left: 0, width: '100vw', height: '100vh' }}
+    >
+      {/* Backdrop — full screen blur */}
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-      
-      {/* Modal Card */}
-      <div className="relative w-full max-w-lg bg-white rounded-lg shadow-2xl overflow-hidden animate-slide-up">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">Select VPA</h2>
+
+      {/* Modal Card: 500×442, centered on screen */}
+      <div
+        className="relative flex flex-col overflow-hidden animate-slide-up"
+        style={{
+          width: '500px',
+          height: '442px',
+          borderRadius: '4px',
+          background: '#FFFFFF',
+          boxShadow: [
+            '0px 9px 28px 8px #0000000D',
+            '0px 6px 16px 0px #00000014',
+            '0px 3px 6px -4px #0000001F',
+          ].join(', '),
+        }}
+      >
+        {/* ── Header: 500×56, padding 16px 24px ── */}
+        <div
+          style={{
+            width: '500px',
+            height: '56px',
+            paddingTop: '16px',
+            paddingRight: '24px',
+            paddingBottom: '16px',
+            paddingLeft: '24px',
+            background: '#FFFFFF',
+            boxShadow: '0px -1px 0px 0px #F0F0F0 inset',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <h2
+            style={{
+              fontFamily: 'Roboto, sans-serif',
+              fontWeight: 500,
+              fontSize: '16px',
+              lineHeight: '24px',
+              letterSpacing: '0%',
+              color: '#141218',
+              margin: 0,
+            }}
+          >
+            Select VPA
+          </h2>
         </div>
-        
-        <div className="p-6">
-          <p className="text-sm text-slate-500 mb-6">Select a VPA to proceed</p>
-          
-          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+
+        {/* ── Body: 500×306, padding 24px, gap 23px ── */}
+        <div
+          style={{
+            width: '500px',
+            height: '306px',
+            padding: '24px',
+            gap: '23px',
+            display: 'flex',
+            flexDirection: 'column',
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+        >
+          <p
+            style={{
+              fontFamily: 'Roboto, sans-serif',
+              fontSize: '14px',
+              color: '#64748b',
+              margin: 0,
+              flexShrink: 0,
+            }}
+          >
+            Select a VPA to proceed
+          </p>
+
+          {/* Options container: 452×258, gap 8px */}
+          <div
+            className="overflow-y-auto custom-scrollbar"
+            style={{
+              width: '452px',
+              height: '258px',
+              gap: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
             {vpaList.map((vpa) => (
               <label
                 key={vpa}
-                className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
-                  localSelected === vpa
-                    ? "border-blue-600 bg-blue-50/50"
-                    : "border-slate-100 hover:border-slate-200 bg-white"
-                }`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 16px',
+                  borderRadius: '4px',
+                  border: `1.5px solid ${localSelected === vpa ? '#2563eb' : '#e2e8f0'}`,
+                  background: localSelected === vpa ? '#eff6ff' : '#FFFFFF',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                }}
               >
-                <div className="relative flex items-center justify-center">
-                  <input
-                    type="radio"
-                    name="vpa"
-                    className="sr-only"
-                    checked={localSelected === vpa}
-                    onChange={() => setLocalSelected(vpa)}
-                    disabled={isProceeding}
-                  />
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    localSelected === vpa ? "border-blue-600" : "border-slate-300"
-                  }`}>
-                    {localSelected === vpa && (
-                      <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                    )}
-                  </div>
+                <input
+                  type="radio"
+                  name="vpa"
+                  className="sr-only"
+                  checked={localSelected === vpa}
+                  onChange={() => setLocalSelected(vpa)}
+                  disabled={isProceeding}
+                />
+                {/* Custom radio */}
+                <div
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    border: `2px solid ${localSelected === vpa ? '#2563eb' : '#94a3b8'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {localSelected === vpa && (
+                    <div
+                      style={{
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: '50%',
+                        background: '#2563eb',
+                      }}
+                    />
+                  )}
                 </div>
-                <span className={`text-sm font-medium ${
-                  localSelected === vpa ? "text-blue-900" : "text-slate-700"
-                }`}>
+                <span
+                  style={{
+                    fontFamily: 'Roboto, sans-serif',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: localSelected === vpa ? '#1e3a8a' : '#374151',
+                  }}
+                >
                   {vpa}
                 </span>
               </label>
@@ -80,21 +180,85 @@ export default function VpaModal() {
           </div>
         </div>
 
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
-          <button
-            onClick={handleProceed}
-            disabled={!localSelected || isProceeding}
-            className={`px-8 py-2.5 text-sm font-semibold rounded-md transition-all flex items-center gap-2 ${
-              localSelected && !isProceeding
-                ? "bg-blue-600 text-white shadow-md hover:bg-blue-700 active:scale-95"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed"
-            }`}
+        {/* ── Footer: 500×80, padding 20px 16px ── */}
+        <div
+          style={{
+            width: '500px',
+            height: '80px',
+            paddingTop: '20px',
+            paddingRight: '16px',
+            paddingBottom: '20px',
+            paddingLeft: '16px',
+            background: '#FFFFFF',
+            boxShadow: '0px 1px 0px 0px #F0F0F0 inset',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+          }}
+        >
+          {/* Buttons container: width 468, height 40, gap 20px */}
+          <div
+            style={{
+              width: '468px',
+              height: '40px',
+              gap: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+            }}
           >
-            {isProceeding && (
-              <img src={loadingIcon} alt="Loading" className="w-[18px] h-[18px] animate-spin" />
-            )}
-            {isProceeding ? "Proceeding..." : "Proceed"}
-          </button>
+            {/* Cancel button */}
+            <button
+              onClick={() => setLocalSelected(selectedVpa || "")}
+              disabled={isProceeding}
+              style={{
+                height: '40px',
+                padding: '0 24px',
+                borderRadius: '4px',
+                border: '1px solid #d1d5db',
+                background: '#FFFFFF',
+                fontFamily: 'Roboto, sans-serif',
+                fontWeight: 500,
+                fontSize: '14px',
+                color: '#374151',
+                cursor: isProceeding ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => { if (!isProceeding) e.target.style.background = '#f9fafb'; }}
+              onMouseLeave={(e) => { e.target.style.background = '#FFFFFF'; }}
+            >
+              Cancel
+            </button>
+
+            {/* Proceed button */}
+            <button
+              onClick={handleProceed}
+              disabled={!localSelected || isProceeding}
+              style={{
+                height: '40px',
+                padding: '0 24px',
+                borderRadius: '4px',
+                border: 'none',
+                background: localSelected && !isProceeding ? '#2563eb' : '#e2e8f0',
+                fontFamily: 'Roboto, sans-serif',
+                fontWeight: 500,
+                fontSize: '14px',
+                color: localSelected && !isProceeding ? '#FFFFFF' : '#94a3b8',
+                cursor: !localSelected || isProceeding ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {isProceeding && (
+                <img src={loadingIcon} alt="Loading" style={{ width: '16px', height: '16px' }} className="animate-spin" />
+              )}
+              {isProceeding ? 'Proceeding...' : 'Proceed'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

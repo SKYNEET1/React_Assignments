@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import { transactionReportAPI, reportStatusAPI } from "../services/api";
 import PageLoader from "../components/PageLoader";
 import Alert from "../components/Alert";
+import PageHeader from "../components/PageHeader";
 import loadingIcon from "../assets/loading_logo.png";
 
 export default function TransactionReports() {
@@ -230,11 +231,23 @@ export default function TransactionReports() {
   return (
     <PageLoader>
       <div className="animate-fade-in pb-10">
-        <h1 className="text-xl font-bold text-slate-800 mb-8 lowercase first-letter:uppercase">Transaction Reports</h1>
+        <PageHeader title="Transaction Reports" />
 
         {/* Filter Section */}
-        <div className="bg-white rounded-xl p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-100 mb-8">
-          <div className="space-y-6">
+        <div 
+          className="bg-white mb-8 flex flex-col"
+          style={{ 
+            width: '1128px', 
+            height: '188px', 
+            padding: '20px', 
+            gap: '20px', 
+            borderRadius: '4px', 
+            border: '1px solid var(--Secondary-3, #F0F0F0)',
+            opacity: 1,
+            background: 'var(--Other-Color-A1, #FFFFFF)'
+          }}
+        >
+          <div className="space-y-5 flex-1 flex flex-col justify-center">
             {/* Filter Types */}
             <div>
               <p className="text-sm font-semibold text-slate-600 mb-4">Select a Report Filter</p>
@@ -320,91 +333,78 @@ export default function TransactionReports() {
 
         {error && <Alert type="error" message={error} className="mb-6" />}
 
-        {/* Action Bar */}
-        <div className="flex items-start justify-between mb-4 mt-12 gap-4">
-          <div className="relative flex-1 max-w-sm mt-4">
+        {/* Action Bar (Toolbar) */}
+        <div 
+          className="flex items-center justify-between mb-0 mt-8 bg-white border border-slate-100 border-b-0"
+          style={{ width: '1128px', height: '72px', padding: '16px', borderRadius: '4px 4px 0 0' }}
+        >
+          <div 
+            className="relative"
+            style={{ width: '180px', height: '40px' }}
+          >
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search here..."
-              className="w-full pl-4 pr-10 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#185bc5]/20 focus:border-[#185bc5] transition-all placeholder-slate-300 italic"
+              className="w-full h-full pl-3 pr-6 py-2 border border-slate-200 rounded-[4px] text-sm bg-white focus:outline-none placeholder-slate-300 italic"
             />
           </div>
 
-          {queryId ? (
-            <div className="mt-4">
-              {reportStatus?.status === "READY" ? (
-                <a href={reportStatus.signed_url} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-all shadow-md group">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download Report
-                </a>
-              ) : (
-                <button
-                  onClick={async () => {
-                    try {
-                      console.log(`[TransactionReports.jsx] Checking status for queryId: ${queryId}`);
-                      setLoading(true);
-                      const res = await reportStatusAPI(queryId);
-                      console.log(`[TransactionReports.jsx] Status response:`, res.data);
-
-                      if (res.data?.data) {
-                        setReportStatus(res.data.data);
-                        if (res.data.data.status === "READY") {
-                          setError(null);
-
-                          // Extract the streaming data array to populate the table (dashboard grid)
-                          const reportPayload = res.data.data;
-                          if (Array.isArray(reportPayload.data)) {
-                            setTransactions(reportPayload.data);
-                          } else if (Array.isArray(reportPayload.transactions)) {
-                            setTransactions(reportPayload.transactions);
-                          } else if (Array.isArray(res.data.data_array)) {
-                            setTransactions(res.data.data_array);
+          <div className="flex items-center gap-4">
+            {queryId ? (
+              <div className="">
+                {reportStatus?.status === "READY" ? (
+                  <a href={reportStatus.signed_url} target="_blank" rel="noreferrer" 
+                    className="flex items-center justify-center gap-2 bg-[#156DC4] border border-[#1890FF] text-white text-sm font-normal rounded-[4px] shadow-[0_2px_0_0_rgba(0,0,0,0.043)] transition-all"
+                    style={{ width: '142px', height: '40px', padding: '9px 16px' }}
+                  >
+                    Download All
+                  </a>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      try {
+                        console.log(`[TransactionReports.jsx] Checking status for queryId: ${queryId}`);
+                        setLoading(true);
+                        const res = await reportStatusAPI(queryId);
+                        if (res.data?.data) {
+                          setReportStatus(res.data.data);
+                          if (res.data.data.status === "READY") {
+                            setError(null);
+                            const reportPayload = res.data.data;
+                            if (Array.isArray(reportPayload.data)) setTransactions(reportPayload.data);
+                            else if (Array.isArray(reportPayload.transactions)) setTransactions(reportPayload.transactions);
+                            else if (Array.isArray(res.data.data_array)) setTransactions(res.data.data_array);
                           } else {
-                            console.warn("[TransactionReports.jsx] Could not detect transactions array in READY payload", res.data);
+                            setError("Report is still " + res.data.data.status + ". Please wait.");
                           }
-                        } else {
-                          setError("Report is still " + res.data.data.status + ". Please wait a moment.");
                         }
+                      } catch (err) {
+                        setError("Status check failed: " + err.message);
+                      } finally {
+                        setLoading(false);
                       }
-                    } catch (err) {
-                      console.error(`[TransactionReports.jsx] Status check failed:`, err);
-                      setError("Status check failed: " + err.message);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  disabled={loading}
-                  className="flex items-center gap-2.5 px-6 py-2.5 bg-[#185bc5] hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-all shadow-md group border border-blue-400 disabled:opacity-70"
-                >
-                  {loading ? (
-                    <img src={loadingIcon} alt="Loading" className="w-[18px] h-[18px] animate-spin" />
-                  ) : (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                  )}
-                  {loading ? "Checking..." : "Check Status"}
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="mt-4">
+                    }}
+                    disabled={loading}
+                    className="flex items-center justify-center gap-2 bg-[#156DC4] border border-[#1890FF] text-white text-sm font-normal rounded-[4px] shadow-[0_2px_0_0_rgba(0,0,0,0.043)] transition-all"
+                    style={{ width: '142px', height: '40px', padding: '9px 16px' }}
+                  >
+                    {loading ? "..." : "Status"}
+                  </button>
+                )}
+              </div>
+            ) : (
               <button
-                className="flex items-center gap-2.5 px-6 py-2.5 bg-[#185bc5] hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-all shadow-md group disabled:opacity-50"
+                className="flex items-center justify-center gap-2 bg-[#156DC4] border border-[#1890FF] text-white text-sm font-normal rounded-[4px] shadow-[0_2px_0_0_rgba(0,0,0,0.043)] transition-all"
+                style={{ width: '142px', height: '40px', padding: '9px 16px' }}
                 onClick={initiateDownload}
                 disabled={loading}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 transition-transform group-hover:-translate-y-0.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download All
+                <span style={{ fontFamily: 'Public Sans', fontSize: '14px', lineHeight: '22px' }}>Download All</span>
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Data Table */}
@@ -422,25 +422,27 @@ export default function TransactionReports() {
                 <p className="font-medium lowercase first-letter:uppercase italic">No transaction records found</p>
               </div>
             ) : (
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-slate-50/50 border-b border-slate-100">
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Transaction ID</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Amount</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Date & Time</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Status</th>
+              <table className="w-full text-left" style={{ width: '1128px' }}>
+                <thead style={{ background: 'var(--Secondary-1, #FAFAFA)', boxShadow: '-18px 0px 0px -17px #0000000F' }}>
+                  <tr>
+                    <th style={{ width: '112px', height: '70px', padding: '0 20px', fontSize: '14px', fontWeight: '500', color: '#000000D9' }}>SL NO</th>
+                    <th style={{ width: '254px', height: '70px', padding: '0 16px', fontSize: '14px', fontWeight: '500', color: '#000000D9' }}>Transaction ID</th>
+                    <th style={{ width: '254px', height: '70px', padding: '0 16px', fontSize: '14px', fontWeight: '500', color: '#000000D9' }}>Amount</th>
+                    <th style={{ width: '254px', height: '70px', padding: '0 16px', fontSize: '14px', fontWeight: '500', color: '#000000D9' }}>Date & Time</th>
+                    <th style={{ width: '254px', height: '70px', padding: '0 16px', fontSize: '14px', fontWeight: '500', color: '#000000D9', textAlign: 'center' }}>Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-100">
                   {filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage).map((txn, idx) => (
-                    <tr key={txn.Transaction_Id || idx} className="hover:bg-slate-50/30 transition-colors">
-                      <td className="px-6 py-5 text-sm font-medium text-slate-700">{txn.Transaction_Id || "8a33f29c8079444792f65b86"}</td>
-                      <td className="px-6 py-5 text-sm font-bold text-slate-900 italic">
+                    <tr key={txn.Transaction_Id || idx} style={{ height: '70px' }}>
+                      <td style={{ width: '112px', padding: '0 20px', fontSize: '14px', color: '#000000D9' }}>{(currentPage - 1) * rowsPerPage + idx + 1}</td>
+                      <td style={{ width: '254px', padding: '0 16px', fontSize: '14px', color: '#000000D9' }}>{txn.Transaction_Id || "8a33f29c8079444792f65b86"}</td>
+                      <td style={{ width: '254px', padding: '0 16px', fontSize: '14px', color: '#000000D9' }}>
                         ₹ {parseFloat(txn.Transaction_Amount || 454.85).toFixed(2)}
                       </td>
-                      <td className="px-6 py-5 text-xs font-semibold text-slate-500">{txn["Date_&_Time"] || "13/04/2026 14:42"}</td>
-                      <td className="px-6 py-5 text-center">
-                        <span className="inline-flex items-center px-3 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded-md border border-green-100">
+                      <td style={{ width: '254px', padding: '0 16px', fontSize: '14px', color: '#000000D9' }}>{txn["Date_&_Time"] || "13/04/2026 14:42"}</td>
+                      <td style={{ width: '254px', padding: '0 16px', textAlign: 'center' }}>
+                        <span className="inline-flex items-center px-3 py-1 bg-green-50 text-green-600 text-[12px] font-medium rounded-md border border-green-100">
                           Received
                         </span>
                       </td>
@@ -452,124 +454,69 @@ export default function TransactionReports() {
           </div>
 
           {/* Pagination Footer */}
-          <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3 text-sm text-slate-500">
-                <span>Rows per page:</span>
-                <select
-                  value={rowsPerPage}
-                  onChange={(e) => {
-                    setRowsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="bg-white border border-slate-200 rounded-md py-1 px-2 focus:outline-none"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-slate-500">
-                <span>Go to:</span>
-                <input
-                  type="text"
-                  value={goToPage}
-                  onChange={(e) => setGoToPage(e.target.value)}
-                  onBlur={() => {
-                    const p = parseInt(goToPage);
-                    if (p > 0 && p <= Math.ceil(filtered.length / rowsPerPage)) {
-                      setCurrentPage(p);
-                    } else {
-                      setGoToPage(currentPage.toString());
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const p = parseInt(goToPage);
-                      if (p > 0 && p <= Math.ceil(filtered.length / rowsPerPage)) {
-                        setCurrentPage(p);
-                      } else {
-                        setGoToPage(currentPage.toString());
-                      }
-                    }
-                  }}
-                  className="bg-white border border-slate-200 rounded-md py-1 px-2 w-12 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
-                />
-              </div>
-              <div className="text-sm text-slate-400 font-medium">
-                Showing {filtered.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} - {Math.min(currentPage * rowsPerPage, filtered.length)} of {filtered.length} records
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => {
-                  setCurrentPage(1);
-                  setGoToPage("1");
-                }}
-                className="p-1.5 text-slate-400 hover:bg-white rounded-md border border-transparent hover:border-slate-200 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
-              </button>
-              <button
-                disabled={currentPage === 1}
-                onClick={() => {
-                  setCurrentPage(prev => prev - 1);
-                  setGoToPage((currentPage - 1).toString());
-                }}
-                className="p-1.5 text-slate-400 hover:bg-white rounded-md border border-transparent hover:border-slate-200 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
-              </button>
-
-              {(() => {
-                const totalPages = Math.ceil(filtered.length / rowsPerPage);
-                const pages = [];
-                let start = Math.max(1, currentPage - 2);
-                let end = Math.min(totalPages, start + 4);
-                if (end - start < 4) start = Math.max(1, end - 4);
-
-                for (let i = start; i <= end; i++) {
-                  pages.push(i);
-                }
-
-                return pages.map(p => (
-                  <button
-                    key={p}
-                    onClick={() => {
-                      setCurrentPage(p);
-                      setGoToPage(p.toString());
+          <div 
+            className="bg-white border-t border-slate-100 flex items-center justify-center rounded-b-xl"
+            style={{ width: '1128px', height: '72px', padding: '16px' }}
+          >
+            <div 
+              className="flex items-center justify-between"
+              style={{ width: '1096px', height: '40px' }}
+            >
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3 text-sm text-slate-500">
+                  <span>Rows per page:</span>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
                     }}
-                    className={`w-8 h-8 flex items-center justify-center text-xs font-bold rounded-md transition-all ${currentPage === p ? 'bg-blue-50 text-[#185bc5] border border-blue-200 shadow-sm' : 'text-slate-500 hover:bg-white border border-transparent hover:border-slate-200'}`}
+                    className="bg-white border border-slate-200 rounded-md py-1 px-2 focus:outline-none"
                   >
-                    {p}
-                  </button>
-                ));
-              })()}
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                  </select>
+                </div>
+                <div className="text-sm text-slate-400 font-medium">
+                  Showing {filtered.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} - {Math.min(currentPage * rowsPerPage, filtered.length)} of {filtered.length}
+                </div>
+              </div>
 
-              <button
-                disabled={currentPage === Math.ceil(filtered.length / rowsPerPage) || filtered.length === 0}
-                onClick={() => {
-                  setCurrentPage(prev => prev + 1);
-                  setGoToPage((currentPage + 1).toString());
-                }}
-                className="p-1.5 text-slate-400 hover:bg-white rounded-md border border-transparent hover:border-slate-200 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-              </button>
-              <button
-                disabled={currentPage === Math.ceil(filtered.length / rowsPerPage) || filtered.length === 0}
-                onClick={() => {
-                  const last = Math.ceil(filtered.length / rowsPerPage);
-                  setCurrentPage(last);
-                  setGoToPage(last.toString());
-                }}
-                className="p-1.5 text-slate-400 hover:bg-white rounded-md border border-transparent hover:border-slate-200 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(1)}
+                  className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-md border border-transparent disabled:opacity-20 transition-all font-bold"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
+                </button>
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                  className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-md border border-transparent disabled:opacity-20 transition-all font-bold"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                
+                <button
+                  disabled={currentPage === Math.ceil(filtered.length / rowsPerPage) || filtered.length === 0}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-md border border-transparent disabled:opacity-20 transition-all font-bold"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
+                </button>
+                <button
+                  disabled={currentPage === Math.ceil(filtered.length / rowsPerPage) || filtered.length === 0}
+                  onClick={() => {
+                    const last = Math.ceil(filtered.length / rowsPerPage);
+                    setCurrentPage(last);
+                  }}
+                  className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-md border border-transparent disabled:opacity-20 transition-all font-bold"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>

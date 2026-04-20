@@ -2,6 +2,7 @@
 import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import PageLoader from "../components/PageLoader";
+import PageHeader from "../components/PageHeader";
 
 const ISSUE_TYPES = ["Hardware", "Software", "Network", "Payment", "Other"];
 
@@ -141,12 +142,7 @@ export default function RaiseTicket() {
         <div className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm px-8 pt-7 pb-8">
 
           {/* Card Header */}
-          <div className="flex items-center gap-2 mb-6 pb-5 border-b border-slate-100">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-slate-500">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-            </svg>
-            <h2 className="text-base font-bold text-slate-800">Raise a Ticket</h2>
-          </div>
+          <PageHeader title="Raise a Ticket" />
 
           <form onSubmit={handleSubmit} className="space-y-5">
 

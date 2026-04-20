@@ -1,13 +1,13 @@
 import axios from "axios";
 import { encryptRequest, decryptResponse } from "./cryptoService";
 
-const SERVICES_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
-const ENCR_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
-const USER_UAT = "https://api-preprod.txninfra.com/encrV4/CBOI";
-const PLAIN_UAT = "https://api-preprod.txninfra.com/CBOI";
-const REPORTS_UAT = "https://services-cboi-uat.isupay.in/CBOI/reports";
+const SERVICES_UAT = import.meta.env.VITE_SERVICES_UAT;
+const ENCR_UAT = import.meta.env.VITE_ENCR_UAT;
+const USER_UAT = import.meta.env.VITE_USER_UAT;
+const PLAIN_UAT = import.meta.env.VITE_PLAIN_UAT;
+const REPORTS_UAT = import.meta.env.VITE_REPORTS_UAT;
 
-const PASS_KEY = "c0CKRG7yNFY3OIxY92izqj0YeMk6JPqdOlGgqsv3mhicXmAv";
+const PASS_KEY = import.meta.env.VITE_PASS_KEY;
 
 const baseHeaders = {
   "Content-Type": "application/json",

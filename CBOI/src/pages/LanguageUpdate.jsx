@@ -4,6 +4,7 @@ import { updateLanguage, resetLanguage } from "../redux/slices/languageSlice";
 import Alert from "../components/Alert";
 import LoadingSpinner from "../components/LoadingSpinner";
 import PageLoader from "../components/PageLoader";
+import PageHeader from "../components/PageHeader";
 import loadingIcon from "../assets/loading_logo.png";
 import { fetchLanguageAPI, currentLanguageAPI, merchantFetchAPI } from "../services/api";
 
@@ -138,10 +139,7 @@ export default function LanguageUpdate() {
   return (
     <PageLoader>
       <div className="animate-fade-in">
-        {/* Title */}
-        <div className="mb-8">
-          <h1 className="text-xl font-bold text-slate-800">Language Update</h1>
-        </div>
+        <PageHeader title="Language Update" />
 
         {/* Form Card */}
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-8">

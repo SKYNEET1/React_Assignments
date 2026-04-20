@@ -1,6 +1,6 @@
 import CryptoJS from "crypto-js";
 
-const AES_KEY = "82gbZpEWVzTcL5qXB+kSKCes7XbqdNxqKjQeDgdnJX0=";
+const AES_KEY = import.meta.env.VITE_AES_KEY;
 
 /**
  * Port of Java AESUtils prepending IV (16 bytes) to the ciphertext.

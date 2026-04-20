@@ -1,18 +1,15 @@
 const authConfig = {
-  clientId: "02WnEFxSElzxzrv3Qht29IacaiO6qKa3pclXleoo",
+  clientId: import.meta.env.VITE_AUTH_CLIENT_ID,
 
-  authorizationEndpoint:
-    "https://cboi-auth-stage.isupay.in/application/o/authorize/",
+  authorizationEndpoint: import.meta.env.VITE_AUTH_AUTHORIZATION_ENDPOINT,
 
   // token endpoint
-  tokenEndpoint:
-    "https://cboi-auth-stage.isupay.in/application/o/token/",
+  tokenEndpoint: import.meta.env.VITE_AUTH_TOKEN_ENDPOINT,
 
 
-  redirectUri: "http://localhost:3000/callback",
+  redirectUri: import.meta.env.VITE_AUTH_REDIRECT_URI,
 
-  scopes:
-    "openid profile email offline_access authorities privileges user_name created adminName bankCode goauthentik.io/api",
+  scopes: import.meta.env.VITE_AUTH_SCOPES,
 };
 
 

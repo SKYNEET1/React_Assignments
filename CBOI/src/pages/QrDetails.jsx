@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import { merchantFetchAPI, generateQRAPI } from "../services/api";
 import PageLoader from "../components/PageLoader";
+import PageHeader from "../components/PageHeader";
 import { QRCodeSVG } from "qrcode.react";
 import CboiLogo from "../components/CboiLogo";
 
@@ -142,10 +143,7 @@ export default function QrDetails() {
   return (
     <PageLoader>
       <div className="animate-fade-in pb-12">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-slate-800">QR Details</h1>
-        </div>
+        <PageHeader title="QR Details" />
 
         {/* Configuration Card */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
